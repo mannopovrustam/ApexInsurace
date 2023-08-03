@@ -1,0 +1,135 @@
+{
+    "info": {
+        "_postman_id": "d2679596-6e53-4dcc-9445-bc108f5a1641",
+        "name": "sms-send",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+        "_exporter_id": "19141153"
+    },
+    "item": [
+        {
+            "name": "send-re",
+            "request": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n    \"phone\":\"998935411452\",\n    \"message\":\"APEX INSURANCE получил смс\"\n}",
+                    "options": {
+                        "raw": {
+                            "language": "json"
+                        }
+                    }
+                },
+                "url": {
+                    "raw": "{{url}}send-re",
+                    "host": [
+                        "{{url}}send-re"
+                    ]
+                }
+            },
+            "response": [
+                {
+                    "name": "New Request",
+                    "originalRequest": {
+                        "method": "POST",
+                        "header": [],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"phone\":\"998935411452\",\n    \"message\":\"APEX INSURANCE получил смс\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{url}}send-re",
+                            "host": [
+                                "{{url}}send-re"
+                            ]
+                        }
+                    },
+                    "status": "OK",
+                    "code": 200,
+                    "_postman_previewlanguage": "json",
+                    "header": [
+                        {
+                            "key": "Content-Type",
+                            "value": "application/json"
+                        },
+                        {
+                            "key": "Transfer-Encoding",
+                            "value": "chunked"
+                        },
+                        {
+                            "key": "Date",
+                            "value": "Mon, 10 Jul 2023 09:15:06 GMT"
+                        },
+                        {
+                            "key": "Keep-Alive",
+                            "value": "timeout=20"
+                        },
+                        {
+                            "key": "Proxy-Connection",
+                            "value": "keep-alive"
+                        }
+                    ],
+                    "cookie": [],
+                    "body": "{\n    \"result\": true,\n    \"message\": \"OK\"\n}"
+                }
+            ]
+        }
+    ],
+    "auth": {
+        "type": "basic",
+        "basic": [
+            {
+                "key": "password",
+                "value": "{{password}}",
+                "type": "string"
+            },
+            {
+                "key": "username",
+                "value": "{{login}}",
+                "type": "string"
+            }
+        ]
+    },
+    "event": [
+        {
+            "listen": "prerequest",
+            "script": {
+                "type": "text/javascript",
+                "exec": [
+                    ""
+                ]
+            }
+        },
+        {
+            "listen": "test",
+            "script": {
+                "type": "text/javascript",
+                "exec": [
+                    ""
+                ]
+            }
+        }
+    ],
+    "variable": [
+        {
+            "key": "url",
+            "value": "http://online.aic.uz/apex/ins/sms-push/",
+            "type": "string"
+        },
+        {
+            "key": "login",
+            "value": "SMS_RE",
+            "type": "string"
+        },
+        {
+            "key": "password",
+            "value": "smsre!2023@",
+            "type": "string"
+        }
+    ]
+}
