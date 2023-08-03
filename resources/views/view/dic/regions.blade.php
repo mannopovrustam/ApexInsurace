@@ -185,8 +185,6 @@
                     <div class="card-header d-flex justify-content-between">
                         <h5>Туманлар</h5>
                     </div>
-
-
                     <div class="card-body">
                         <table class="table" id="district-table">
                             <thead>
