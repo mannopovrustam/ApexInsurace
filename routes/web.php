@@ -109,6 +109,7 @@ Route::get('rewriteregions', function (){
                 'region_id' => $r['Id'],
             ]);
         }
-
     }
-});
+
+    return response()->json(['success' => true]);
+})->middleware('auth');

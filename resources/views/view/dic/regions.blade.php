@@ -144,6 +144,37 @@
                 $('.ajaxLoading').hide();
         })
 
+        function rewriteregions(){
+            // click rewriteregions url
+            $.ajax({
+                url: '/rewriteregions',
+                type: 'GET',
+                success: function (data) {
+                    console.log(data);
+                    if (data.success) {
+                        $.alert({
+                            icon: 'fa fa-info',
+                            closeIcon: true,
+                            type: 'green',
+                            title: '&nbsp;Ўзгартириш',
+                            content: '<br>Маълумотлар муваффақиятли ўзгартирилди!',
+                            columnClass: 'small',
+                        });
+                       // location.reload();
+                    } else {
+                        $.alert({
+                            icon: 'fa fa-info',
+                            closeIcon: true,
+                            type: 'red',
+                            title: '&nbsp;Ўзгартириш',
+                            content: '<br>Маълумотлар ўзгартирилмади!',
+                            columnClass: 'small',
+                        });
+                    }
+                }
+            })
+        }
+
 
 
     </script>
@@ -158,6 +189,7 @@
                 <div class="card" id="user">
                     <div class="card-header d-flex justify-content-between">
                         <h5>Вилоятлар</h5>
+                        <button class="btn btn-primary" onclick="rewriteregions()"><i class="uil-refresh"></i></button>
                     </div>
 
                     <div class="card-body">
