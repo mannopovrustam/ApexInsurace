@@ -366,11 +366,76 @@ class ContractController extends Controller
             ->select('clients.*','contracts.*','categories.name as cat')->get();
 
         $user = auth()->user();
+
         foreach ($contracts as $contract){ sendEmail::dispatch($contract, $user); }
 //        foreach ($contracts as $contract){ $this->handle($contract, $user); }
+
         return response(['message' => 'Шартномалар электрон почтага юборилди!', 'content'=>"", 'status'=>'success', 'color' => 'green']);
         //return response(['message' => 'Сақлаш билан муаммо юз берди!', 'content'=>"Бироздан сўнг уриниб кўринг!"]);
     }
+
+/*
+    public function handle($contract, $user)
+    {
+
+        $forQr = '';
+        $forQr .= 'Talabnoma ID: '.$contract->id.';';
+        $forQr .= ' FISh '.$contract->fullname.';';
+        $forQr .= ' Summa '.$contract->amount;
+
+        $qrName = md5('qrcode_'.$contract->id.'_'.time()).'.png';
+        $imagePath = public_path('petition/qrcode/'.$qrName);
+        $qr = QrCode::format('png')->size(300)->generate($forQr, $imagePath);
+
+        $filePath = public_path('/petition/template/Talabnoma.docx');
+        $templateProcessor = new TemplateProcessor($filePath);
+        $templateProcessor->setValue('id', $contract->id);
+        $templateProcessor->setValue('curdate', now()->translatedFormat('d.m.Y'));
+        $templateProcessor->setValue('fullname', $contract->fullname);
+        $templateProcessor->setValue('address', $contract->address);
+        $templateProcessor->setValue('phone', $contract->phone);
+        $templateProcessor->setValue('date_payment', $contract->amount);
+        $templateProcessor->setValue('amount', $contract->amount);
+        $templateProcessor->setValue('phone', $contract->phone);
+        $templateProcessor->setValue('phone_user', $user->phone);
+        $templateProcessor->setValue('name_user', $user->name);
+        $templateProcessor->setImageValue('qr', $imagePath);
+
+        if ($contract->category_id >= 8 && $contract->category_id <= 19)
+            $templateProcessor->setValue('bank', $contract->cat);
+        $file = 'petition/Talabnoma_'.$contract->id.'.docx';
+        $values['file'] = public_path($file);
+        $templateProcessor->saveAs($values['file']);
+
+        $contract_files = ContractFile::create([
+            'contract_id' => $contract->id,
+            'file' => '/'.$file,
+            'name' => 'Talabnoma',
+        ]);
+
+        User::auditable('contract_files', $contract_files->id, json_encode($contract_files->toArray()), 'C');
+
+        $pdfContent = file_get_contents($file);
+        $base64Pdf = base64_encode($pdfContent);
+
+        $url = 'https://api.faktura.uz/Api/HybridDocument/Post?companyInn='.env('COMPANY_INN');
+        $postData = [
+            "CompanyInn" => env('COMPANY_INN'),
+            "Region" => $contract->region_id,
+            "Area" => $contract->district_id,
+            "FullName" => $contract->fullname,
+            "Address" => $contract->address,
+            "SenderName" => "APEX  INSURANCE AJ",
+            "SenderAddress" => "100099, ГОРОД ТАШКЕНТ, ЮНУСАБАДСКИЙ РАЙОН, УЛИЦА А.ТЕМУРА-О.ЗОКИРОВА , 5/1",
+            "Base64Content" => $base64Pdf
+        ];
+        return (new FakturaService())->getSendRequest($url, 'POST', $postData, $contract->id);
+    }
+*/
+
+
+
+
 
     public function getGroupExcel(Request $request)
     {

@@ -74,7 +74,7 @@ class sendEmail implements ShouldQueue
             'name' => 'Talabnoma',
         ]);
 
-        User::auditable('contract_files', $contract_files->id, json_encode($contract_files->toArray()), 'C');
+//        User::auditable('contract_files', $contract_files->id, json_encode($contract_files->toArray()), 'C');
 
         $pdfContent = file_get_contents($file);
         $base64Pdf = base64_encode($pdfContent);
@@ -91,9 +91,7 @@ class sendEmail implements ShouldQueue
             "Base64Content" => $base64Pdf
         ];
 
-        if (env('IS_IDE',0) == 1) {
-            (new FakturaService())->getSendRequest($url, 'POST', $postData, $this->contract->id);
-        }
+        if (env('IS_IDE',0) == 1) (new FakturaService())->getSendRequest($url, 'POST', $postData, $this->contract->id);
 
 
 //        unlink(public_path($file));
