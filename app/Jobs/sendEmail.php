@@ -80,6 +80,7 @@ class sendEmail implements ShouldQueue
         $base64Pdf = base64_encode($pdfContent);
 
         $url = 'https://api.faktura.uz/Api/HybridDocument/Post?companyInn='.env('COMPANY_INN');
+
         $postData = [
             "CompanyInn" => env('COMPANY_INN'),
             "Region" => $this->contract->region_id,
