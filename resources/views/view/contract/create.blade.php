@@ -20,6 +20,7 @@
 
     <script>
         var counter;
+        var counterSelect;
 
         $(document).ready(function () {
             counter = {{ count(explode(',', $data->client->phone)) }};
@@ -28,6 +29,18 @@
                 var inputId = "input_" + counter;
                 var inputHtml = '<div class="input-group mt-1" id="group_' + inputId + '"><div class="input-group-text" style="cursor: pointer" onclick="removeInput(\'' + inputId + '\')"><i class="fa fa-minus"></i></div><input id="phone-' + inputId + '" name="phone[]" type="text" class="form-control" placeholder="XXYYYYYYY" required></div>';
                 $("#input-container").append(inputHtml);
+            });
+
+            counterSelect = {{ count(explode(',', $data->client)) }};
+            $("#add-select").click(function () {
+                counterSelect++;
+                var inputId = "select_" + counterSelect;
+                var inputHtml = '<div class="input-group mt-1" id="group_' + inputId + '"><div class="input-group-text" style="cursor: pointer" onclick="removeSelect(\'' + inputId + '\')"><i class="fa fa-minus"></i></div><select name="clients[]" id="clients-' + inputId + '" class="form-select"><option value="">*** Мижозни танланг ***</option>'
+                        @foreach($clients as $c)
+                    + '<option value="{{ $c->id }}">{{ $c->fullname }}</option>'
+                        @endforeach
+                    + '</select></div>';
+                $("#input-container-select").append(inputHtml);
             });
 
             var cntr = 0;
@@ -160,6 +173,10 @@
             $('#group_' + id).remove();
         }
 
+        function removeSelect(id) {
+            $('#group_' + id).remove();
+        }
+
         function removeFile(id) {
             $('#file_' + id).remove();
         }
@@ -204,6 +221,17 @@
                             var inputHtml = '<div class="input-group" id="group_' + inputId + '"><div class="input-group-text" style="cursor: pointer" onclick="removeInput(\'' + inputId + '\')"><i class="fa fa-minus"></i></div><input id="phone-' + inputId + '" name="phone[]" type="text" class="form-control" placeholder="XXYYYYYYY" value="' + item + '" required></div>';
                             $("#input-container").append(inputHtml);
                         });
+
+                        var stringSelect = data.data.clients;
+                        var itemsSelect = stringSelect.split(",");
+                        $('.input-group').remove();
+
+                        $.each(itemsSelect, function (index, item) {
+                            counter++;
+                            var inputId = "input_" + counter;
+                            var inputHtml = '<div class="input-group" id="group_' + inputId + '"><div class="input-group-text" style="cursor: pointer" onclick="removeInput(\'' + inputId + '\')"><i class="fa fa-minus"></i></div><input id="phone-' + inputId + '" name="phone[]" type="text" class="form-control" placeholder="XXYYYYYYY" value="' + item + '" required></div>';
+                            $("#input-container-select").append(inputHtml);
+                        });
                     }
                     $.alert({
                         title: data.message,
@@ -228,10 +256,10 @@
                     <div class="card-header d-flex justify-content-between">
                         <p>Регистрация</p>
                         @if($data->id)
-                            <a href="{{ asset('contracts').'/'.$data->id }}">{{ $data->number .'-'. $data->name }}</a>
+                            <h5>{{ $data->number .'-'. $data->name }}</h5>
                         @endif
                         <a href="{{ asset('contracts') }}" class="btn btn-primary"><i
-                                class="uil-left-arrow-from-left"></i> Ортга</a>
+                                    class="uil-left-arrow-from-left"></i> Ортга</a>
                     </div>
                     <div class="card-body">
                         <form action="/contracts" method="post" enctype="multipart/form-data">
@@ -267,7 +295,7 @@
                                     <div class="form-group">
                                         <label>&nbsp;</label><br>
                                         <button type="button" class="btn btn-primary" onclick="findGuest()"><i
-                                                class="fa fa-search"></i> Қидириш
+                                                    class="fa fa-search"></i> Қидириш
                                         </button>
                                     </div>
                                 </div>
@@ -284,7 +312,7 @@
                                                             @foreach($category->categories as $c)
                                                                 @can($c->permission)
                                                                     <option
-                                                                        value="{{ $c->id }}" @selected($c->id == $data->category_id)>{{ $c->name }}</option>
+                                                                            value="{{ $c->id }}" @selected($c->id == $data->category_id)>{{ $c->name }}</option>
                                                                 @endcan
                                                             @endforeach
                                                         </optgroup>
@@ -292,7 +320,7 @@
                                                 @else
                                                     @can($category->permission)
                                                         <option
-                                                            value="{{$category->id}}" @selected($category->id == $data->category_id)>
+                                                                value="{{$category->id}}" @selected($category->id == $data->category_id)>
                                                             {{$category->name}}
                                                         </option>
                                                     @endcan
@@ -342,7 +370,7 @@
                                             <option value="">*** Вилоят танланг ***</option>
                                             @foreach(\DB::table('regions')->get() as $rgn)
                                                 <option
-                                                    value="{{ $rgn->id }}" @selected($data->client->region_id == $rgn->id)>{{ $rgn->name }}</option>
+                                                        value="{{ $rgn->id }}" @selected($data->client->region_id == $rgn->id)>{{ $rgn->name }}</option>
                                             @endforeach
                                         </select>
                                     </div>
@@ -364,11 +392,12 @@
                                     </div>
                                 </div>
 
-                                <div class="col-md-4">
+                                <div class="col-md-3">
                                     <div class="form-group">
                                         <label for="phone">Қарздорнинг телефон рақами </label> <span
-                                            class="btn-sm btn-primary" style="padding:1px 6px 3px 5px; cursor: pointer"
-                                            id="add-input">+</span>
+                                                class="btn-sm btn-primary"
+                                                style="padding:1px 6px 3px 5px; cursor: pointer"
+                                                id="add-input">+</span>
                                         <div id="input-container">
                                             @forelse(explode(',', $data->client->phone) as $key => $phone)
                                                 <div class="input-group mt-1" id="group_{{ $key+1 }}">
@@ -386,7 +415,7 @@
                                 </div>
 
 
-                                <div class="col-md-4">
+                                <div class="col-md-3">
                                     <div class="form-group">
                                         <label for="type">Қарздор шакли</label>
                                         <select class="form-select" name="type" id="type" required>
@@ -396,7 +425,7 @@
                                         </select>
                                     </div>
                                 </div>
-                                <div class="col-md-4">
+                                <div class="col-md-3">
                                     <div class="form-group">
                                         <label for="date_payment">Суғурта товони тўланган сана</label>
                                         <input type="date" class="form-control inputmaskDate" id="date_payment"
@@ -404,7 +433,7 @@
                                                name="date_payment" placeholder="Суғурта товони тўланган сана">
                                     </div>
                                 </div>
-                                <div class="col-md-4">
+                                <div class="col-md-3">
                                     <div class="form-group">
                                         <label for="amount">Суғурта товони суммаси</label>
                                         <input type="number" step="0.01" class="form-control" id="amount"
@@ -413,18 +442,76 @@
                                     </div>
                                 </div>
 
-                                <div class="col-md-4">
+                                <div class="col-md-3">
                                     <div class="form-group">
                                         <label for="sts">Шартнома ҳолати</label>
                                         <select class="form-select" name="status" id="sts" required>
                                             @foreach(\App\Models\Client::STATUS_NAME as $key => $status)
                                                 <option
-                                                    value="{{ $key }}" @selected($data->status == $key)>{{ $status }}</option>
+                                                        value="{{ $key }}" @selected($data->status == $key)>{{ $status }}</option>
                                             @endforeach
                                         </select>
                                     </div>
                                 </div>
-                                <div class="form-group mt-3">
+
+                                <div class="col-md-3">
+                                    <div class="form-group">
+                                        <label for="inn">ИНН</label>
+                                        <input type="text" class="form-control" id="inn" name="inn"
+                                               value="{{ isset($data->id) ? $data->inn : old('inn') }}"
+                                               placeholder="ИНН">
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="form-group">
+                                        <label for="mfo">МФО</label>
+                                        <input type="text" class="form-control" id="mfo" name="mfo"
+                                               value="{{ isset($data->id) ? $data->mfo : old('mfo') }}"
+                                               placeholder="МФО">
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="form-group">
+                                        <label for="account_number">Ҳисоб рақам</label>
+                                        <input type="text" class="form-control" id="account_number"
+                                               name="account_number"
+                                               value="{{ isset($data->id) ? $data->account_number : old('account_number') }}"
+                                               placeholder="Ҳисоб рақам">
+                                    </div>
+                                </div>
+
+                                {{-- add dynamical input --}}
+
+
+                                <div class="form-group mt-3 d-flex justify-content-between align-items-end">
+
+                                    <div class="col-md-6">
+                                        <label for="clients">Шартномага тегишли шахслар</label> <span
+                                                class="btn-sm btn-primary"
+                                                style="padding:1px 6px 3px 5px; cursor: pointer"
+                                                id="add-select">+</span>
+                                        <div id="input-container-select">
+                                            @if($data->clients)
+                                                @forelse(explode(',', $data->clients) as $k => $client)
+                                                    <div class="input-group mt-1" id="group_select_{{ $k+1 }}">
+                                                        <div class="input-group-text" style="cursor: pointer"
+                                                             onclick="removeSelect('{{$k+1}}')"><i
+                                                                    class="fa fa-minus"></i>
+                                                        </div>
+                                                        <select name="clients[]" id="clients-{{ $k+1 }}"
+                                                                class="form-select">
+                                                            <option value="">*** Мижозни танланг ***</option>
+                                                            @foreach($clients as $c)
+                                                                <option value="{{ $c->id }}" @selected($c->id == $client)>{{ $c->fullname }}</option>
+                                                            @endforeach
+                                                        </select>
+                                                    </div>
+                                                @empty
+                                                @endforelse
+                                            @endif
+                                        </div>
+                                    </div>
+
                                     <button type="submit" class="btn btn-success">Saqlash</button>
                                 </div>
                             </div>

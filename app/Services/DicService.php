@@ -2,12 +2,17 @@
 
 namespace App\Services;
 
+use App\Http\Controllers\ContractController;
 use App\Jobs\sendSMS;
 use App\Models\Category;
+use App\Models\Client;
+use App\Models\Contract\Contract;
 use App\Models\DocTemplate;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
+use Yajra\DataTables\Facades\DataTables;
+
 class DicService extends Controller
 {
     public function __construct()
@@ -154,6 +159,51 @@ class DicService extends Controller
     {
         DB::table('categories')->where('id', $id)->delete();
         return back()->with('message', 'Иш туркуми муваффакиятли ўчирилди.');
+    }
+
+
+    public function getClient()
+    {
+        $data = new Client();
+        $clients = DB::table('clients')->get();
+        return view('view.dic.client.client', ['clients' => $clients, 'data' => $data]);
+    }
+
+    public function getClientCreate($id)
+    {
+        if ($id) $data = Client::find($id);
+        else $data = new Client();
+        return view('view.dic.client.create', ['data' => $data]);
+    }
+
+    public function postClientDelete(Request $request)
+    {
+        if ($request->ids){
+            $data = DB::table('clients')->whereIn('id', $request->ids)->get();
+            foreach ($data as $datum) {
+                foreach (Contract::where('client_id', $datum->id)->get() as $item) {
+                    (new ContractController())->destroy($item->id);
+                }
+            }
+            DB::table('clients')->whereIn('id', $request->ids)->delete();
+            return response()->json(['success' => 'Client deleted successfully.']);
+        }
+        return response()->json(['error' => 'Client not found.']);
+    }
+
+    public function postClient(Request $request)
+    {
+        $values = $request->except(['_token']);
+        $values['phone'] = isset($values['phone']) ? implode(',',$values['phone']):null;
+        Client::updateOrCreate(['id' => $request->id],$values);
+
+        if ($request->id) return back()->with('message', 'Мижоз муваффакиятли янгиланди.');
+        return back()->with('success', 'Мижоз муваффакиятли сақланди.');
+    }
+    public function deleteClient($id)
+    {
+        DB::table('clients')->where('id', $id)->delete();
+        return back()->with('message', 'Мижоз муваффакиятли ўчирилди.');
     }
 
 }

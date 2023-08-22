@@ -123,7 +123,7 @@ class FakturaService
                 'status' => $status,
             ]);
 
-            User::auditable('hybrid', $uid, $postData,'S');
+            // User::auditable('hybrid', $uid, $postData,'S');
             // Request successful
             curl_close($curl);
             return $response;

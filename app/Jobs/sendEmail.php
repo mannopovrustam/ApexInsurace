@@ -74,13 +74,12 @@ class sendEmail implements ShouldQueue
             'name' => 'Talabnoma',
         ]);
 
-        User::auditable('contract_files', $contract_files->id, json_encode($contract_files->toArray()), 'C');
+        // User::auditable('contract_files', $contract_files->id, json_encode($contract_files->toArray()), 'C');
 
         $pdfContent = file_get_contents($file);
         $base64Pdf = base64_encode($pdfContent);
 
         $url = 'https://api.faktura.uz/Api/HybridDocument/Post?companyInn='.env('COMPANY_INN');
-
         $postData = [
             "CompanyInn" => env('COMPANY_INN'),
             "Region" => $this->contract->region_id,
@@ -92,9 +91,7 @@ class sendEmail implements ShouldQueue
             "Base64Content" => $base64Pdf
         ];
 
-        if (env('IS_IDE',0) == 1) {
-            (new FakturaService())->getSendRequest($url, 'POST', $postData, $this->contract->id);
-        }
+        if (env('IS_IDE',0) == 1) (new FakturaService())->getSendRequest($url, 'POST', $postData, $this->contract->id);
 
 
 //        unlink(public_path($file));

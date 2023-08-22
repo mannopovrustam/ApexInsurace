@@ -60,8 +60,9 @@ class ContractController extends Controller
         $data = new Contract();
         $data->client = new Client();
         $data->category = new Category();
+        $clients = \DB::table('clients')->get();
 
-        return view($this->path.'.create', ['data' => $data]);
+        return view($this->path.'.create', ['data' => $data, 'clients' => $clients]);
     }
 
     public function store(Request $request)
@@ -119,6 +120,9 @@ class ContractController extends Controller
                 "address" => $values['address'],
                 "dtb" => $values['dtb'],
                 "type" => $values['type'],
+                "inn" => $values['inn'],
+                "mfo" => $values['mfo'],
+                "account_number" => $values['account_number']
             ]);
 
             $contract = Contract::updateOrCreate([
@@ -131,7 +135,8 @@ class ContractController extends Controller
                 "date_payment" => $values['date_payment'],
                 "date" => $values['date'],
                 "amount" => $values['amount'],
-                "status" => $values['status']
+                "status" => $values['status'],
+                "clients" => isset($values['clients']) ? implode(',',$values['clients']):null,
             ]);
 
             if ($values['status'] == 10){
@@ -159,6 +164,7 @@ class ContractController extends Controller
                     $base64Pdf = base64_encode($pdfContent);
                 }
             }
+
             DB::commit();
 
             return back()->withMessage($contract->number.' рақамли шартнома муваффақиятли яратилди')->withColor('success');
@@ -287,13 +293,14 @@ class ContractController extends Controller
             'contract_id' => 'required',
             'date' => 'required|date',
             'amount' => 'required|numeric|regex:/^\d+(\.\d{1,2})?$/',
+            'note' => 'nullable|string|max:255',
         ]);
 
         $data = ContractPayment::where([
             ['client_id', $request->client_id],
             ['contract_id', $request->contract_id],
             ['date', $request->date],
-            ['amount', $request->amount]
+            ['amount', $request->amount],
         ])->select('created_at')->first();
 
 
@@ -327,7 +334,7 @@ class ContractController extends Controller
         $cp = ContractPayment::where('contract_id', $id)->get();
         foreach ($cp as $c){
             $html .= "<tr><td>".number_format($c->amount,2,"."," ")."</td><td>".Carbon::parse($c->date)->format('d.m.Y')."</td>";
-            $html .= "<td><i class='fa fa-pen' style='cursor: pointer' onclick='changePayment(`{$c->id}`, `".number_format($c->amount,2,"."," ")."`, `{$c->date}`)'></i></td></tr>";
+            $html .= "<td><i class='fa fa-pen' style='cursor: pointer' onclick='changePayment(`{$c->id}`, `".number_format($c->amount,2,"."," ")."`, `{$c->date}`, `{$c->note}`)'></i></td></tr>";
         }
         $html .= '</table>';
         return $html;
@@ -399,8 +406,8 @@ class ContractController extends Controller
 
             foreach (explode(',', $data->client->phone) as $item) {
                 Carbon::setLocale('uz');
-                $vars = ['$contract_id','$category_name','$number','$contract_name','$contract_date','$fullname','$passport','$pinfl','$phone','$address','$dtb','$type','$date_payment','$amount_sum','$amount_paid','$residue','$status','$contract_note','$created_at','$tax','$expense','$judge_name','$judge_no','$judge_result','$judge_note','$mib_name','$mib_no','$mib_result','$mib_note','$curdate','$admin_name','$admin_phone'];
-                $changeVal = [$data->id,$data->category->name, $data->number, $data->name,Carbon::parse($data->date)->translatedFormat('d M Y'),$data->client->fullname,$data->client->passport,$data->client->pinfl,$item,$data->client->address,Carbon::parse($data->client->dtb)->format('d.m.Y'),$data->client->type ? 'Юридик шахс':'Жисмоний шахс',Carbon::parse($data->date_payment)->format('d.m.Y'),number_format($data->amount, 0, ',', ' '),number_format($data->amount_paid, 0, ',', ' '),round(($data->amount - $data->amount_paid), 2),Client::STATUS_COLOR[$data->status],$data->note,Carbon::parse($data->created_at)->format('d.m.Y'),$data->tax,$data->expense, $judge->$type, $data->judge?->work_number,$data->judge?->result,$data->judge?->note,$data->mib?->name,$data->mib?->work_number,$data->mib?->result,$data->mib?->note, now()->format('Y').' йил '. now()->translatedFormat('d M'), $user->name, $user->phone];
+                $vars = ['$contract_id','$category_name','$number','$contract_name','$contract_date','$fullname','$passport','$pinfl','$phone','$address','$dtb','$type','$date_payment','$amount_sum','$amount_paid','$residue','$status','$contract_note','$created_at','$tax','$expense','$judge_name','$judge_no','$judge_result','$judge_note','$mib_name','$mib_no','$mib_result','$mib_note','$curdate','$admin_name','$admin_phone', '$inn','$mfo','$account_number'];
+                $changeVal = [$data->id,$data->category->name, $data->number, $data->name,Carbon::parse($data->date)->translatedFormat('d M Y'),$data->client->fullname,$data->client->passport,$data->client->pinfl,$item,$data->client->address,Carbon::parse($data->client->dtb)->format('d.m.Y'),$data->client->type ? 'Юридик шахс':'Жисмоний шахс',Carbon::parse($data->date_payment)->format('d.m.Y'),number_format($data->amount, 0, ',', ' '),number_format($data->amount_paid, 0, ',', ' '),round(($data->amount - $data->amount_paid), 2),Client::STATUS_COLOR[$data->status],$data->note,Carbon::parse($data->created_at)->format('d.m.Y'),$data->tax,$data->expense, $judge->$type, $data->judge?->work_number,$data->judge?->result,$data->judge?->note,$data->mib?->name,$data->mib?->work_number,$data->mib?->result,$data->mib?->note, now()->format('Y').' йил '. now()->translatedFormat('d M'), $user->name, $user->phone, $data->client->inn, $data->client->mfo, $data->client->account_number];
 
                 $result = str_replace($vars, $changeVal, $sms_template->content);
                 sendSMS::dispatch($item, $result, $data->id);
@@ -469,12 +476,22 @@ class ContractController extends Controller
     public function postJudgeInfo(Request $request, $id)
     {
         ContractJudge::updateOrCreate(['contract_id' => $id], $request->except('_token'));
+        $contract = Contract::find($id);
+        if ($contract->status <= 2){
+            $contract->status = 3;
+            $contract->save();
+        }
         return response(['message' => 'Маълумотлар сақланди!', 'content'=>""]);
     }
 
     public function postMibInfo(Request $request, $id)
     {
         ContractMib::updateOrCreate(['contract_id' => $id], $request->except('_token'));
+        $contract = Contract::find($id);
+        if ($contract->status < 6){
+            $contract->status = 8;
+            $contract->save();
+        }
         return response(['message' => 'Маълумотлар сақланди!', 'content'=>""]);
     }
 
@@ -492,7 +509,8 @@ class ContractController extends Controller
     public function edit($id)
     {
         $data = Contract::with(['client', 'category', 'files'])->find($id);
-        return view($this->path.'.create', ['data' => $data]);
+        $clients = Client::all();
+        return view($this->path.'.create', ['data' => $data, 'clients' => $clients]);
     }
 
     public function destroy($id)
@@ -501,6 +519,10 @@ class ContractController extends Controller
         $data->files()->delete();
         $data->petitions()->delete();
         $data->payments()->delete();
+        $data->hybrids()->delete();
+        $data->judge()->delete();
+        $data->mib()->delete();
+        $data->sms()->delete();
 
         User::auditable('contracts', $id, json_encode($data), 'D');
 

@@ -11,6 +11,10 @@
     var stopLoop = false;
 
 
+/*
+    var start_ins = moment().subtract(7, 'years').startOf('year');
+    var end_ins = moment().add(1, 'days');
+*/
     var start_ins = moment().subtract(7, 'years').startOf('year');
     var end_ins = moment().add(1, 'days');
     var start_created = moment().subtract(7, 'years').startOf('year');
@@ -69,6 +73,7 @@
                 {data: 'fullname', name: 'clients.fullname'},
                 {data: 'amount', name: 'amount'},
                 {data: 'residue', name: 'residue'},
+                {data: 'payment_total'},
                 {data: 'status', name: 'status'},
                 {data: 'created_at', name: 'created_at'},
                 {data: 'phone', name: 'clients.phone'},
@@ -335,9 +340,7 @@
                     }
                 }
             }
-        })
-
-
+        });
     }
     @endcan
 
@@ -546,18 +549,6 @@
                                                 </div>
                                             </div>
                                         </div>
-                                        <br>
-                                        <div class="d-flex justify-content-between">
-                                            <div class="form-group">
-                                                <label for="min_sum">Минимал сумма</label>
-                                                <input type="text" name="start_amount" id="start_amount" class="form-control" value="0">
-                                            </div>
-                                            <div class="form-group">
-                                                <label for="max_sum">Максимал сумма</label>
-                                                <input type="text" name="end_amount" id="end_amount" class="form-control"
-                                                value="{{ \DB::select("select MAX(amount_paid) as max_amount from contracts")[0]->max_amount + 5 }}">
-                                            </div>
-                                        </div>
                                     </div>
                                     <div class="modal-footer">
                                         <button type="button" data-bs-dismiss="modal"
@@ -606,6 +597,7 @@
                             <th>Қарздор ФИШ</th>
                             <th>Суғурта товони суммаси</th>
                             <th>Суғурта товон қолдиғи</th>
+                            <th>Муддатда тўланган сумма</th>
                             <th>Ҳолати</th>
                             <th>Яратилган сана</th>
                             <th>Қарздорнинг телефон рақами</th>

@@ -16,12 +16,15 @@ class DataRepository
         $data = \DB::table('contracts')
             ->join('clients', 'contracts.client_id', '=', 'clients.id')
             ->join('categories', 'contracts.category_id', '=', 'categories.id')
-            ->select('contracts.*', 'clients.fullname', 'clients.phone', 'clients.passport', 'clients.pinfl', 'categories.name as category_name');
+            ->leftjoin('contract_payments', 'contracts.id', '=', 'contract_payments.contract_id')
+            ->select('contracts.*', 'clients.fullname', 'clients.phone', 'clients.passport', 'clients.pinfl', 'categories.name as category_name', \DB::raw('sum(contract_payments.amount) as payment_total'));
         // start_ins, end_ins
         // start_created, end_created
-        $data = $data->whereBetween('contracts.date', [$request->start_ins, $request->end_ins]);
-        $data = $data->whereBetween('contracts.created_at', [$request->start_created, $request->end_created]);
-        $data = $data->whereBetween('contracts.amount_paid', [$request->start_amount, $request->end_amount]);
+        $data = $data->whereBetween('contracts.created_at', [$request->start_created, $request->end_created])->groupBy('contracts.id');
+        $data = $data->where(function ($query) use ($request){
+            $query->whereBetween('contract_payments.date', [$request->start_ins, $request->end_ins]);
+            if ($request->start_ins == "2016-01-01" && $request->end_ins == "2023-08-23") $query->orWhereNull('contract_payments.date');
+        });
 
         // set row attr for update row
         return DataTables::of($data)
@@ -50,6 +53,9 @@ class DataRepository
             })
             ->addColumn('residue', function ($data) {
                 return number_format(($data->amount - $data->amount_paid),2,"."," ");
+            })
+            ->editColumn('payment_total', function ($data) {
+                return $data->payment_total ? number_format($data->payment_total,2,"."," ") : 0.00;
             })
             ->editColumn('status', function ($data) {
                 return "<span class='badge ".\App\Models\Client::STATUS_COLOR[$data->status]."'>".\App\Models\Client::STATUS_NAME[$data->status]."</span>";
@@ -104,4 +110,13 @@ class DataRepository
         return $html;
     }
 
+
+    public function getClient()
+    {
+        $data = \DB::table('clients')->select('id','fullname','passport','pinfl','address','phone','created_at');
+        return DataTables::of($data)
+            ->setRowAttr([
+                'id' => function ($data) {return $data->id;},
+            ])->make(true);
+    }
 }

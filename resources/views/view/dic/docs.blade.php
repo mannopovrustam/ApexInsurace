@@ -175,6 +175,18 @@
                                                 <th>Ҳодим телефони</th>
                                                 <td>$admin_phone</td>
                                             </tr>
+                                            <tr>
+                                                <th>ИНН</th>
+                                                <td>$inn</td>
+                                            </tr>
+                                            <tr>
+                                                <th>МФО</th>
+                                                <td>$mfo</td>
+                                            </tr>
+                                            <tr>
+                                                <th>Ҳисоб рақам</th>
+                                                <td>$account_number</td>
+                                            </tr>
                                         </table>
                                     </div>
                                 </div>

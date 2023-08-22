@@ -62,6 +62,9 @@
                         @can('Ҳужжат шаблон яратиш')
                         <li><a href="/dic/docs">Word шаблон</a></li>
                         @endcan
+                        @can('Мижоз яратиш')
+                        <li><a href="/dic/client">Мижозлар</a></li>
+                        @endcan
                         <li><a href="/dic/category">Иш туркуми</a></li>
                     </ul>
                 </li>
