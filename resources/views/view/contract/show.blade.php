@@ -519,6 +519,12 @@
         }
     });
 
+    $('.judge-info').on('click', function (){
+        $('#judge-info').toggle();
+    })
+    $('.mib-info').on('click', function (){
+        $('#mib-info').toggle();
+    })
 
 </script>
 
@@ -1018,11 +1024,12 @@
                 </div>
 
                 <div class="col-lg-6">
-                    <div class="card">
-                        <div class="card-header">
+                    <div class="card" >
+                        <div class="card-header d-flex justify-content-between align-items-center">
                             <h6>Суд маълумотлари</h6>
+                            <button type="button" class="btn-sm btn-primary judge-info"><i class="uil-sort-amount-down"></i></button>
                         </div>
-                        <div class="card-body">
+                        <div class="card-body" id="judge-info" style="display:none">
                             <form id="judge_information">
                                 <table class="table single-contract">
                                     <tbody>
@@ -1062,11 +1069,12 @@
                     </div>
                 </div>
                 <div class="col-lg-6">
-                    <div class="card">
-                        <div class="card-header">
+                    <div class="card" >
+                        <div class="card-header d-flex justify-content-between align-items-center">
                             <h6>МИБ маълумотлари</h6>
+                            <button type="button" class="btn-sm btn-primary mib-info"><i class="uil-sort-amount-down"></i></button>
                         </div>
-                        <div class="card-body">
+                        <div class="card-body" id="mib-info" style="display:none">
                             <form id="mib_information">
                                 <table class="table single-contract">
                                     <tbody>

@@ -3,6 +3,7 @@
 namespace App\Repository;
 
 use App\Models\Petition;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Yajra\DataTables\Facades\DataTables;
 
@@ -23,7 +24,7 @@ class DataRepository
         $data = $data->whereBetween('contracts.created_at', [$request->start_created, $request->end_created])->groupBy('contracts.id');
         $data = $data->where(function ($query) use ($request){
             $query->whereBetween('contract_payments.date', [$request->start_ins, $request->end_ins]);
-            if ($request->start_ins == "2016-01-01" && $request->end_ins == "2023-08-23") $query->orWhereNull('contract_payments.date');
+            if ($request->start_ins == "2016-01-01" && $request->end_ins == Carbon::now()->addDay()->format('Y-m-d')) $query->orWhereNull('contract_payments.date');
         });
 
         // set row attr for update row

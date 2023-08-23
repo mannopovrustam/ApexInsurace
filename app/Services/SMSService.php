@@ -5,6 +5,8 @@ namespace App\Services;
 use App\Models\Contract\ContractSms;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+
 class SMSService
 {
     public static function sendSMS($phone, $message, $contract_id = null)
@@ -39,18 +41,17 @@ class SMSService
             ),
         ));
         $response = curl_exec($curl);
+        Log::info("SMS: ".$response);
         curl_close($curl);
         $response = json_decode($response, true);
         // { "result":true ,"message":"OK" }
-        if ($response['result'] == true && $response['message'] == 'OK' && $contract_id != null) {
-            ContractSms::create([
-                'contract_id' => $contract_id,
-                'phone' => $phone,
-                'message' => $message,
-                'is_sent' => 1,
-                'created_by' => auth()->id(),
-            ]);
-        }
+        ContractSms::create([
+            'contract_id' => $contract_id,
+            'phone' => $phone,
+            'message' => $message,
+            'is_sent' => 1,
+            'created_by' => auth()->id(),
+        ]);
         return $response;
     }
 }

@@ -76,6 +76,7 @@ class sendEmail implements ShouldQueue
 
         // User::auditable('contract_files', $contract_files->id, json_encode($contract_files->toArray()), 'C');
 
+
         $pdfContent = file_get_contents($file);
         $base64Pdf = base64_encode($pdfContent);
 

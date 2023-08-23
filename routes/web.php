@@ -28,8 +28,7 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::get('/', function () {
-    if (!auth()->check()) Auth::loginUsingId(1);
-    return view('welcome');
+    return redirect('dashboard');
 });
 
 
@@ -88,11 +87,14 @@ Route::get('getsms', function (){
 Route::get('rewriteregions', function (){
 
     // truncate tables
-    \DB::table('regions')->truncate();
-    \DB::table('districts')->truncate();
+//    \DB::table('regions')->truncate();
+//    \DB::table('districts')->truncate();
 
-    $region =  (new \App\Services\FakturaService())->getRegions();
+    $region = (new \App\Services\FakturaService())->getRegions();
     $region = json_decode($region, true);
+	return $region;
+
+
     foreach ($region['Data'] as $r) {
         \DB::table('regions')->insert([
             'id' => $r['Id'],
