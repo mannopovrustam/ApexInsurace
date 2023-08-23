@@ -87,12 +87,9 @@ Route::get('getsms', function (){
 Route::get('rewriteregions', function (){
 
     // truncate tables
-//    \DB::table('regions')->truncate();
-//    \DB::table('districts')->truncate();
 
     $region = (new \App\Services\FakturaService())->getRegions();
-    $region = json_decode($region, true);
-	return $region;
+    if ($region) \DB::table('regions')->truncate();
 
 
     foreach ($region['Data'] as $r) {
@@ -103,6 +100,8 @@ Route::get('rewriteregions', function (){
 
         $districts =  (new \App\Services\FakturaService())->getRegionsResponse($r['Id']);
         $districts = json_decode($districts, true);
+
+        if ($districts) \DB::table('districts')->where('region_id', $r['Id'])->truncate();
 
         foreach ($districts['Data'] as $d) {
             \DB::table('districts')->insert([
