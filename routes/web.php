@@ -11,7 +11,9 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\ViewController;
 use App\Models\Contract\ContractPayment;
 use App\Repository\DataRepository;
+use App\Repository\ReportRepository;
 use App\Services\DicService;
+use App\Services\FakturaService;
 use App\Services\RegisterService;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Route;
@@ -40,23 +42,23 @@ Route::group(['middleware' => ['auth']], function() {
 
 Route::get('/dashboard', function () {
 
-    $data['report1a'] = collect(\DB::select('select count(*) as val from contracts'))->first()->val;
-    $data['report1b'] = collect(\DB::select('select sum(amount) as val from contracts'))->first()->val;
+    $data['report1a'] = collect(DB::select('select count(*) as val from contracts'))->first()->val;
+    $data['report1b'] = collect(DB::select('select sum(amount) as val from contracts'))->first()->val;
 
-    $data['report2a'] = collect(\DB::select('select count(*) as val from contracts where status = 10'))->first()->val;
-    $data['report2b'] = collect(\DB::select('select sum(amount) as val from contract_payments'))->first()->val;
+    $data['report2a'] = collect(DB::select('select count(*) as val from contracts where status = 10'))->first()->val;
+    $data['report2b'] = collect(DB::select('select sum(amount) as val from contract_payments'))->first()->val;
 
-    $data['report3a'] = collect(\DB::select('select count(*) as val from contracts where status != 10 and status != 6'))->first()->val;
-    $data['report3b'] = collect(\DB::select('select sum(amount) - sum(amount_paid) as val from contracts where status != 10 or status != 6'))->first()->val;
+    $data['report3a'] = collect(DB::select('select count(*) as val from contracts where status != 10 and status != 6'))->first()->val;
+    $data['report3b'] = collect(DB::select('select sum(amount) - sum(amount_paid) as val from contracts where status != 10 or status != 6'))->first()->val;
 
-    $data['report4a'] = collect(\DB::select('select count(*) as val from contracts where MONTH(closed_at) = MONTH(CURDATE()) and status = 10'))->first()->val;
-    $data['report4b'] = collect(\DB::select('select sum(amount) as val from contract_payments where MONTH(created_at) = MONTH(CURDATE())'))->first()->val;
+    $data['report4a'] = collect(DB::select('select count(*) as val from contracts where MONTH(closed_at) = MONTH(CURDATE()) and status = 10'))->first()->val;
+    $data['report4b'] = collect(DB::select('select sum(amount) as val from contract_payments where MONTH(created_at) = MONTH(CURDATE())'))->first()->val;
 
-    $data['report5a'] = collect(\DB::select('select count(*) as val from contracts where MONTH(created_at) = MONTH(CURDATE())'))->first()->val;
-    $data['report5b'] = collect(\DB::select('select sum(amount_paid) as val from contracts where MONTH(created_at) = MONTH(CURDATE())'))->first()->val;
+    $data['report5a'] = collect(DB::select('select count(*) as val from contracts where MONTH(created_at) = MONTH(CURDATE())'))->first()->val;
+    $data['report5b'] = collect(DB::select('select sum(amount_paid) as val from contracts where MONTH(created_at) = MONTH(CURDATE())'))->first()->val;
 
-    $data['report6a'] = collect(\DB::select('select count(*) as val from contracts where DATE(closed_at) = CURDATE() and status = 10'))->first()->val;
-    $data['report6b'] = collect(\DB::select('select sum(amount_paid) as val from contracts where DATE(closed_at) = CURDATE() and status = 10'))->first()->val;
+    $data['report6a'] = collect(DB::select('select count(*) as val from contracts where DATE(closed_at) = CURDATE() and status = 10'))->first()->val;
+    $data['report6b'] = collect(DB::select('select sum(amount_paid) as val from contracts where DATE(closed_at) = CURDATE() and status = 10'))->first()->val;
 
     return view('dashboard', $data);
 })->middleware(['auth', 'verified'])->name('dashboard');
@@ -77,6 +79,7 @@ Route::resources([
 
 Route::auto('data', DataRepository::class);
 Route::auto('dic', DicService::class);
+Route::auto('report', ReportRepository::class);
 
 require __DIR__.'/auth.php';
 
@@ -88,23 +91,23 @@ Route::get('rewriteregions', function (){
 
     // truncate tables
 
-    $region = (new \App\Services\FakturaService())->getRegions();
-    if ($region) \DB::table('regions')->truncate();
+    $region = (new FakturaService())->getRegions();
+    if ($region) DB::table('regions')->truncate();
 
 
     foreach ($region['Data'] as $r) {
-        \DB::table('regions')->insert([
+        DB::table('regions')->insert([
             'id' => $r['Id'],
             'name' => $r['Name'],
         ]);
 
-        $districts =  (new \App\Services\FakturaService())->getRegionsResponse($r['Id']);
+        $districts =  (new FakturaService())->getRegionsResponse($r['Id']);
         $districts = json_decode($districts, true);
 
-        if ($districts) \DB::table('districts')->where('region_id', $r['Id'])->truncate();
+        if ($districts) DB::table('districts')->where('region_id', $r['Id'])->truncate();
 
         foreach ($districts['Data'] as $d) {
-            \DB::table('districts')->insert([
+            DB::table('districts')->insert([
                 'id' => $d['Id'],
                 'name' => $d['Name'],
                 'region_id' => $r['Id'],
