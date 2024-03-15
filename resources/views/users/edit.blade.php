@@ -2,6 +2,10 @@
 
 
 @section('content')
+
+    <link href="/assets/libs/select2/css/select2.min.css" rel="stylesheet" type="text/css" />
+    <script src="http://10.49.0.27/assets/libs/select2/js/select2.min.js"></script>
+
     <div class="container">
 
         <div class="card">
@@ -52,6 +56,17 @@
                         <div class="form-group">
                             <strong>Confirm Password:</strong>
                             {!! Form::password('confirm-password', array('placeholder' => 'Confirm Password','class' => 'form-control')) !!}
+                        </div>
+                    </div>
+                    <div class="col-xs-12 col-sm-12 col-md-12">
+                        <div class="form-group">
+                            <strong>Region:</strong>
+                            <select class="select2 form-control select2-multiple" multiple="multiple" name="region_id[]" required data-placeholder="Танлаш ...">
+                                <option value="">***Танланг***</option>
+                                @foreach(\App\Models\Region::all() as $r)
+                                    <option value="{{ $r->id }}" @selected(in_array($r->id,explode(',',$user->region_id)))>{{ $r->name }}</option>
+                                @endforeach
+                            </select>
                         </div>
                     </div>
                     @role('Admin')

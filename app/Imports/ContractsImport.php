@@ -15,6 +15,7 @@ class ContractsImport implements ToCollection, WithHeadingRow
     public function collection(Collection $rows)
     {
         $count = $rows->where('fullname', '!=', null)->count();
+        ini_set('max_execution_time', 180);
 
         for ($i = 0; $i < $count; $i++)
         {

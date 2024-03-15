@@ -24,7 +24,7 @@
             <div class="col-md-12">
                 <div class="card" id="user">
                     <div class="card-header d-flex justify-content-between">
-                        <h5>СМС шаблон</h5>
+                        <h5>Word шаблон</h5>
                         <button type="button" class="text-muted" data-bs-toggle="modal"
                                 data-bs-target="#variables">Ўзгарувчилар
                         </button>
@@ -186,6 +186,10 @@
                                             <tr>
                                                 <th>Ҳисоб рақам</th>
                                                 <td>$account_number</td>
+                                            </tr>
+                                            <tr>
+                                                <th>Банк номи</th>
+                                                <td>$bank_name</td>
                                             </tr>
                                         </table>
                                     </div>

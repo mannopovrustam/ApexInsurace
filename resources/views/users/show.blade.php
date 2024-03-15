@@ -29,7 +29,7 @@
                             <strong>Roles:</strong>
                             @if(!empty($user->getRoleNames()))
                                 @foreach($user->getRoleNames() as $v)
-                                    <label class="badge badge-success">{{ $v }}</label>
+                                    <label class="badge bg-dark">{{ $v }}</label>
                                 @endforeach
                             @endif
                         </div>

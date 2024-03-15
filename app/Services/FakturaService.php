@@ -121,6 +121,7 @@ class FakturaService
                 'uid' => $uid,
                 'created_at' => $createdAt,
                 'status' => $status,
+		'created_by' => auth()->id(),
             ]);
 
             // User::auditable('hybrid', $uid, $postData,'S');
@@ -292,7 +293,7 @@ class FakturaService
 
     public function getPreview($uid, $check = false)
     {
-        $check = $check ? 1 : 0;
+        $check = $check ? 'true' : 'false';
         $url = "https://api.faktura.uz/Api/HybridDocument/GetPreview/$uid?withCheck=$check&companyInn=" . env('COMPANY_INN');
 
         $token = $this->getToken();

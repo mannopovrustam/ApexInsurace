@@ -54,16 +54,22 @@
 
     });
 
-    $("#cp_table").load('{{ asset('contracts/payments/'.$data->id) }}')
+    $("#cp_table_plastik").load('{{ asset('contracts/payments/'.$data->id.'/1') }}')
+    $("#cp_table_naqd").load('{{ asset('contracts/payments/'.$data->id.'/2') }}')
     $('#contractPayEmpty').on('click', function () {
         $('#payment_id').val("");
         $('#payment_amount').val("");
         $('#payment_date').val("");
         $('#payment_note').val("");
+        $('#payment_type').val("");
         $(this).hide();
     });
     $('#contractPay').on('click', function () {
         var formData = $('#contract_payments').serialize();
+	if($('#payment_type').val() == ''){
+		alert('Тўлов турини танланг!');
+		return;
+	}
 
         $.ajax({
             url: "{{ asset('contracts/payment') }}",
@@ -76,11 +82,13 @@
                     type: 'green',
                     buttons: {ok: {text: 'OK', btnClass: 'btn-green'}}
                 });
-                $("#cp_table").load('{{ asset('contracts/payments/'.$data->id) }}');
+                $("#cp_table_plastik").load('{{ asset('contracts/payments/'.$data->id.'/1') }}')
+                $("#cp_table_naqd").load('{{ asset('contracts/payments/'.$data->id.'/2') }}')
 
                 $('#payment_amount').val("");
                 $('#payment_date').val("");
                 $('#payment_note').val("");
+                $('#payment_type').val("");
             },
             error: function (data) {
                 console.log(data.responseJSON)
@@ -258,6 +266,59 @@
             }
         })
     }
+
+    function autoDebit(action) {
+        var content = '';
+        var btnClass = '';
+        var text = '';
+        var contract_name = ''
+        <?php
+            $first = ($data->contract_name == null);
+            $sts = $first ? "Биринчи":"Такрорий"
+        ?>
+        if (action == 'true') {
+            @if($data->judge?->work_number)
+                content = '<div class="form-group"><label>Шартнома раками ({{ $sts }})</label><input type="text" class="form-control" id="contract_name" ' +
+                'value="{{ $first ? ($data->judge->work_number .' ('.$data->id.')') : $data->contract_name }}"></div>';
+            @endif
+            btnClass = 'btn-green';
+            text = 'Ёқиш';
+        } else {
+            content = 'Автоматик тўловни ўчиришни истайсизми?';
+            btnClass = 'btn-red';
+            text = 'Ўчириш';
+        }
+        $.confirm({
+            title: 'Тасдиқлаш',
+            content: content,
+            buttons: {
+                confirm: {
+                    text: text,
+                    btnClass: btnClass, // Add custom button class
+                    action: function () {
+                        contract_name = $('#contract_name').val();
+                        $.ajax({
+                            url: "/contracts/auto-pay/" + {{ $data->id }},
+                            data: {_token: "{{ csrf_token() }}", action: action, contract_name: contract_name},
+                            method: "GET",
+                            success: function (data) {
+                                $.alert({
+                                    title: data.status,
+                                    content: data.message,
+                                    type: data.color,
+                                    buttons: {ok: {text: 'OK', btnClass: 'btn-'+data.color}}
+                                });
+                                reloadPage();
+                            }
+                        })
+                    }
+                },
+                cancel: {
+                    text: 'Бекор қилиш'
+                }
+            }
+        })
+    }
     @can('Ҳужжатларни ўчириш')
     function deleteItem() {
         $.confirm({
@@ -298,13 +359,54 @@
         })
     }
     @endcan
-    function changePayment(id, amount, date, note) {
+    function changePayment(id, amount, date, note, type) {
         $('#payment_id').val(id);
-        $('#payment_amount').val(amount);
+        $('#payment_amount').val(amount.replace(/ /g, ""));
         $('#payment_date').val(date);
         $('#payment_note').val(note);
+        $('#payment_type').val(type);
         $('#contractPayEmpty').show();
     }
+    function deletePayment(id) {
+        $.confirm({
+            title: 'Тасдиқлаш',
+            content: 'Ростдан ҳам ўчирмоқчимисиз?',
+            buttons: {
+                confirm: {
+                    text: 'Ўчириш',
+                    btnClass: 'btn-red', // Add custom button class
+                    action: function () {
+                        $.ajax({
+                            url: "{{ asset('contracts/delete-payment') }}/"+id,
+                            data: {_token: "{{ csrf_token() }}"},
+                            method: "POST",
+                            success: function (data) {
+                                $.alert({
+                                    title: data.status,
+                                    content: data.message,
+                                    type: 'green',
+                                    buttons: {
+                                        ok: {
+                                            text: 'OK',
+                                            btnClass: 'btn-green',
+                                            action: function () {
+                                                reloadPage();
+                                            }
+                                        }
+                                    }
+                                });
+                            }
+                        })
+                    }
+                },
+                cancel: {
+                    text: 'Бекор қилиш'
+                }
+            }
+        })
+
+    }
+
     @can('Почта юбориш')
     function sendFiletoFaktura() {
         $.confirm({
@@ -483,8 +585,73 @@
 
     }
     @endcan
+    function addTrans() {
+        $.confirm({
+            title: 'Юбориш',
+            content: '<div class="form-group"><label>New Transaction (ID transaction)</label>' +
+                '<input class="form-control" id="new_trans" required>' +
+                '</div>',
+            buttons: {
+                confirm: {
+                    text: 'Тасдиқлаш',
+                    btnClass: 'btn-blue',
+                    action: function () {
+                        if ($('#new_trans').val() == '') {
+                            $.alert({
+                                icon: 'fa fa-info',
+                                closeIcon: true,
+                                type: 'red',
+                                title: '&nbsp;Юборилмади!',
+                                content: '<br>Tranzaksiya kiriting!',
+                                columnClass: 'small',
+                            });
+                            return false;
+                        }
+                        $.ajax({
+                            url: '/contracts/new-trans',
+                            type: 'GET',
+                            data: {
+                                new_trans: $('#new_trans').val(),
+                                contract_id: '{{$data->id}}'
+                            },
+                            success: function (response) {
+                                $.alert({
+                                    icon: 'fa fa-info',
+                                    closeIcon: true,
+                                    type: 'green',
+                                    title: '&nbsp;Qo\'shildi!',
+                                    content: response.message,
+                                    columnClass: 'small',
+                                });
+                                reloadPage();
+                            },
+                            error: function (response) {
+                                $.alert({
+                                    icon: 'fa fa-info',
+                                    closeIcon: true,
+                                    type: 'red',
+                                    title: '&nbsp;Юборилмади!',
+                                    content: '<br>Ҳужжатлар юборилмади!',
+                                    columnClass: 'small',
+                                });
+                            }
+                        });
+                    }
+                },
+                cancel: {
+                    text: 'Бекор қилиш',
+                    btnClass: 'btn-red',
+                    action: function () {
+                    }
+                }
+            }
+        })
+
+    }
+
     function backIndex() {
         $('#contract-show').hide();
+	$('#contract-show').empty();
         $('#contract-index').show();
     }
 
@@ -519,12 +686,69 @@
         }
     });
 
-    $('.judge-info').on('click', function (){
+    $('.judge-info').on('click', function () {
         $('#judge-info').toggle();
     })
-    $('.mib-info').on('click', function (){
+    $('.mib-info').on('click', function () {
         $('#mib-info').toggle();
     })
+
+    function changeStatus(id){
+        $.confirm({
+            title: 'Юбориш',
+            content: '',
+            buttons: {
+                confirm: {
+                    text: 'Тасдиқлаш',
+                    btnClass: 'btn-blue',
+                    action: function () {
+                        $.ajax({
+                            url: '/contracts/change-status/'+id,
+                            type: 'POST',
+                            data: {
+                                change_status: $('#change_status').val(),
+                                _token: '{{ csrf_token() }}'
+                            },
+                            success: function (response) {
+                                $.alert({
+                                    icon: 'fa fa-info',
+                                    closeIcon: true,
+                                    type: 'green',
+                                    title: '&nbsp;Муваффақиятли!',
+                                    content: '<br>Статус ўзгартирилди!',
+                                    columnClass: 'small',
+                                });
+                                reloadPage();
+                            },
+                            error: function (response) {
+                                $.alert({
+                                    icon: 'fa fa-info',
+                                    closeIcon: true,
+                                    type: 'red',
+                                    title: '&nbsp;Статус!',
+                                    content: '<br>ўзгартирилмади!',
+                                    columnClass: 'small',
+                                });
+                            }
+                        });
+                    }
+                },
+                cancel: {
+                    text: 'Бекор қилиш',
+                    btnClass: 'btn-red',
+                    action: function () {
+                    }
+                }
+            }
+        })
+
+    }
+
+
+    function reloadPage() {
+        $('#contract-show').load('/contracts/' + '{{ $data->id }}');
+    }
+
 
 </script>
 
@@ -536,7 +760,25 @@
                     <div>
                         Ҳужжат рақами <b>{{ $data->id }}</b>
                     </div>
+                    <div>
+                        Мижоз рақами <b>{{ $data->client_id }}</b>
+                    </div>
+
                     <div class="d-flex">
+                        <a class="btn btn-primary mr-3" onclick="reloadPage()"><i class="uil-refresh"></i> Янгилаш</a>
+
+			@if(strlen($data->client->pinfl) == 14)
+                        @if($data->auto_pay_activate)
+                            <a class="btn btn-success mr-3" onclick="autoDebit('false')"><span class="spinner-grow"
+                                                                                             style="width: .8rem;height: .8rem;"></span>
+                                Пластик</a>
+                        @else
+                            @if($data->judge?->work_number)
+                                <a class="btn btn-secondary mr-3" onclick="autoDebit('true')"><i class="uil-card-atm"></i> Пластик</a>
+                            @endif
+                        @endif
+			@endif
+
                         @can('СМС юбориш')
                             <a class="btn btn-info mr-3" onclick="smsSend()">СМС юбориш</a>
                         @endcan
@@ -545,7 +787,7 @@
                         @endcan
                         <a href="/contracts/create" class="btn btn-primary mr-3">Янги ҳужжат</a>
                         @can('Ҳужжатларни ўзгартириш (тўлов суммаларидан ташқари)')
-                            <a href="/contracts/{{ $data->id }}/edit" class="btn btn-warning mr-3">Ўзгартириш</a>
+                            <a href="/contracts/{{ $data->id }}/edit" class="btn btn-warning mr-3" target="_blank">Ўзгартириш</a>
                         @endcan
                         @can('Ҳужжатларни ўчириш')
                             <button class="btn btn-danger" onclick="deleteItem()">Ўчириш</button>
@@ -647,6 +889,20 @@
                             <th>Қарздор шакли</th>
                             <td>{{ $data->client->type ? 'Юридик шахс':'Жисмоний шахс' }}</td>
                         </tr>
+                        @if($data->client->type)
+                            <tr>
+                                <th>ИНН</th>
+                                <td>{{ $data->client->inn }}</td>
+                            </tr>
+                            <tr>
+                                <th>МФО</th>
+                                <td>{{ $data->client->mfo }}</td>
+                            </tr>
+                            <tr>
+                                <th>Ҳисоб рақам</th>
+                                <td>{{ $data->client->account_number }}</td>
+                            </tr>
+                        @endif
                         <tr>
                             <th>Суғурта товони тўланган сана</th>
                             <td>{{ \Carbon\Carbon::parse($data->date_payment)->format('d.m.Y') }}</td>
@@ -662,13 +918,21 @@
                         <tr>
                             <th class="text-warning">Суғурта товон қолдиғи</th>
                             <td class="text-warning">
-                                <b>{{ number_format(($data->amount - $data->amount_paid),2,"."," ") }}</b>
+                                <b>{{ number_format(($data->amount - $data->amount_paid)+($data->tax+$data->expense),2,"."," ") }}</b>
                             </td>
                         </tr>
                         <tr>
                             <th>Ҳолати</th>
                             <td><span
                                     class="badge {{ \App\Models\Client::STATUS_COLOR[$data->status] }}">{{ \App\Models\Client::STATUS_NAME[$data->status] }}</span>
+                                <div class="d-flex">
+                                    <select id="change_status" class="form-select">
+                                        @foreach(\App\Models\Client::STATUS_NAME as $key => $status)
+                                            <option value="{{ $key }}" @selected($data->status == $key)>{{ $status }}</option>
+                                        @endforeach
+                                    </select>
+                                    <button onclick="changeStatus({{$data->id}})" class="btn-sm btn-success">Сақлаш</button>
+                                </div>
                             </td>
                         </tr>
                         <tr>
@@ -679,37 +943,85 @@
                             <th>Шартномага тегишли шахслар</th>
                             <td>
                                 @foreach(\App\Models\Client::whereIn('id', explode(',',$data->clients))->with('region', 'district')->get() as $user)
-                                    <span class="badge bg-primary" style="cursor: pointer" data-bs-toggle="modal" data-bs-target="#myModal{{$user->id}}">{{ $user->fullname }}</span>
+                                    <span class="badge bg-primary" style="cursor: pointer" data-bs-toggle="modal"
+                                          data-bs-target="#myModal{{$user->id}}">{{ $user->fullname }}</span>
 
                                     <!-- sample modal content -->
-                                    <div id="myModal{{$user->id}}" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+                                    <div id="myModal{{$user->id}}" class="modal fade" tabindex="-1" role="dialog"
+                                         aria-labelledby="myModalLabel" aria-hidden="true">
                                         <div class="modal-dialog">
                                             <div class="modal-content">
                                                 <div class="modal-header">
                                                     <h5 class="modal-title" id="myModalLabel">{{ $user->fullname }}</h5>
-                                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">
+                                                    <button type="button" class="btn-close" data-bs-dismiss="modal"
+                                                            aria-label="Close">
                                                     </button>
                                                 </div>
                                                 <div class="modal-body">
-                                                    <table class="table table-sm table-hover table-bordered table-striped table-nowrap align-middle">
-                                                        <tr><td>Регион</td><td>{{ $user->region->name }}</td></tr>
-                                                        <tr><td>Туман</td><td>{{ $user->district->name }}</td></tr>
-                                                        <tr><td>Тўлиқ исм</td><td>{{ $user->fullname }}</td></tr>
-                                                        <tr><td>Паспорт</td><td>{{ $user->passport }}</td></tr>
-                                                        <tr><td>Пинфл</td><td>{{ $user->pinfl }}</td></tr>
-                                                        <tr><td>Телефон</td><td>{{ $user->phone }}</td></tr>
-                                                        <tr><td>Манзил</td><td>{{ $user->address }}</td></tr>
-                                                        <tr><td>Туғилган куни</td><td>{{ \Carbon\Carbon::parse($user->dtb)->format('d.m.Y') }}</td></tr>
-                                                        <tr><td>Тури</td><td>{{ $user->type ? 'Юридик шахс':'Жисмоний шахс' }}</td></tr>
-                                                        <tr><td>ИНН</td><td>{{ $user->inn }}</td></tr>
-                                                        <tr><td>МФО</td><td>{{ $user->mfo }}</td></tr>
-                                                        <tr><td>Ҳисоб рақами</td><td>{{ $user->account_number }}</td></tr>
-                                                        <tr><td>Эслатма</td><td>{{ $user->note }}</td></tr>
-                                                        <tr><td>Яратилган</td><td>{{ $user->created_at->format('d.m.Y') }}</td></tr>
+                                                    <table
+                                                        class="table table-sm table-hover table-bordered table-striped table-nowrap align-middle">
+                                                        <tr>
+                                                            <td>Регион</td>
+                                                            <td>{{ $user->region->name }}</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td>Туман</td>
+                                                            <td>{{ $user->district->name }}</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td>Тўлиқ исм</td>
+                                                            <td>{{ $user->fullname }}</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td>Паспорт</td>
+                                                            <td>{{ $user->passport }}</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td>Пинфл</td>
+                                                            <td>{{ $user->pinfl }}</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td>Телефон</td>
+                                                            <td>{{ $user->phone }}</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td>Манзил</td>
+                                                            <td>{{ $user->address }}</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td>Туғилган куни</td>
+                                                            <td>{{ \Carbon\Carbon::parse($user->dtb)->format('d.m.Y') }}</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td>Тури</td>
+                                                            <td>{{ $user->type ? 'Юридик шахс':'Жисмоний шахс' }}</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td>ИНН</td>
+                                                            <td>{{ $user->inn }}</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td>МФО</td>
+                                                            <td>{{ $user->mfo }}</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td>Ҳисоб рақами</td>
+                                                            <td>{{ $user->account_number }}</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td>Эслатма</td>
+                                                            <td>{{ $user->note }}</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td>Яратилган</td>
+                                                            <td>{{ $user->created_at->format('d.m.Y') }}</td>
+                                                        </tr>
                                                     </table>
                                                 </div>
                                                 <div class="modal-footer">
-                                                    <button type="button" class="btn btn-light waves-effect" data-bs-dismiss="modal">Close</button>
+                                                    <button type="button" class="btn btn-light waves-effect"
+                                                            data-bs-dismiss="modal">Close
+                                                    </button>
                                                 </div>
                                             </div>
                                         </div>
@@ -850,81 +1162,6 @@
                     </div>
                 </div>
             </div>
-
-            <div class="card">
-
-                @if($data->id)
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-6">
-                                @can('Тўлов суммаларини киритиш')
-                                    <form id="contract_payments">
-                                        @csrf
-                                        <input type="hidden" name="payment_id" id="payment_id">
-                                        <input type="hidden" name="contract_id" id="contract_id"
-                                               value="{{ $data->id }}">
-                                        <input type="hidden" name="client_id" id="client_id"
-                                               value="{{ $data->client->id }}">
-                                        <div class="row">
-                                            <div class="col-md-12 d-flex align-items-end">
-                                                <div>
-                                                    <div class="d-flex align-items-end">
-                                                        <div class="mr-3">
-                                                            <label>Тўловлар:</label>
-                                                            <input type="text" name="amount" id="payment_amount"
-                                                                   class="form-control" placeholder="Summa">
-                                                        </div>
-                                                        <div>
-                                                            <label>Сана:</label>
-                                                            <input type="date" name="date" id="payment_date"
-                                                                   class="form-control mr-2" placeholder="Sana">
-                                                        </div>
-                                                    </div>
-                                                    <div>
-                                                        <label>Изоҳ:</label>
-                                                        <input type="text" name="note" id="payment_note"
-                                                               class="form-control mr-2" placeholder="Изоҳ">
-                                                    </div>
-                                                </div>
-                                                <button class="btn btn-danger ml-2 mr-2" type="button"
-                                                        style="display: none" id="contractPayEmpty"
-                                                        onclick="contractPayEmpty()"><i
-                                                        class="fa fa-window-close"></i></button>
-                                                <button class="btn btn-primary ml-2" type="button" id="contractPay"><i
-                                                        class="fa fa-save"></i></button>
-                                            </div>
-                                        </div>
-                                    </form>
-                                @endcan
-                                <br>
-                                <div id="cp_table"></div>
-
-                            </div>
-                            <div class="col-md-6">
-                                <form id="tax_expense">
-                                    @csrf
-                                    <input type="hidden" name="contract_id" id="contract_id"
-                                           value="{{ $data->id }}">
-                                    <div class="row">
-                                        <div class="col-md-6">Давлат божи:</div>
-                                        <div class="col-md-6">Почта харажати:</div>
-                                        <div class="col-md-6"><input type="text" name="tax" id="tax"
-                                                                     class="form-control priceInput"
-                                                                     placeholder="DAVLAT BOJ"
-                                                                     value="{{ $data->tax }}"></div>
-                                        <div class="col-md-6 d-flex">
-                                            <input type="text" name="expense" id="expense" class="form-control"
-                                                   placeholder="POCHTA XARAJATI" value="{{ $data->expense }}">
-                                            <button class="btn btn-primary ml-2" type="button" id="taxExpense"><i
-                                                    class="fa fa-save"></i></button>
-                                        </div>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-                @endif
-            </div>
         </div>
         <div class="col-md-6">
             <div class="row">
@@ -1024,20 +1261,21 @@
                 </div>
 
                 <div class="col-lg-6">
-                    <div class="card" >
+                    <div class="card">
                         <div class="card-header d-flex justify-content-between align-items-center">
                             <h6>Суд маълумотлари</h6>
-                            <button type="button" class="btn-sm btn-primary judge-info"><i class="uil-sort-amount-down"></i></button>
+                            <button type="button" class="btn-sm btn-primary judge-info"><i
+                                    class="uil-sort-amount-down"></i></button>
                         </div>
-                        <div class="card-body" id="judge-info" style="display:none">
+                        <div class="card-body" id="judge-info">
                             <form id="judge_information">
                                 <table class="table single-contract">
                                     <tbody>
                                     <tr>
                                         <th>Суд</th>
                                         <input type="hidden" class="form-control" name="judge_id"
-                                               value="{{ $judge->id }}">
-                                        <td>{{ $judge->name }}</td>
+                                               value="{{ isset($judge) ? $judge->id:'' }}">
+                                        <td>{{ isset($judge) ? $judge->name:'' }}</td>
                                     </tr>
                                     <tr>
                                         <th>Иш №</th>
@@ -1054,6 +1292,11 @@
                                         <td><input type="text" name="note" class="form-control"
                                                    value="{{ $data->judge?->note }}"></td>
                                     </tr>
+                                    <tr>
+                                        <th>AutoPay</th>
+                                        <td><input type="date" name="autopay_start_dt" class="form-control"
+                                                   value="{{ $data->autopay_start_dt }}"></td>
+                                    </tr>
                                     <tr style="text-align: right">
                                         <td></td>
                                         <td>
@@ -1069,12 +1312,14 @@
                     </div>
                 </div>
                 <div class="col-lg-6">
-                    <div class="card" >
+                    <div class="card">
                         <div class="card-header d-flex justify-content-between align-items-center">
                             <h6>МИБ маълумотлари</h6>
-                            <button type="button" class="btn-sm btn-primary mib-info"><i class="uil-sort-amount-down"></i></button>
+                            <button type="button" class="btn-sm btn-primary mib-info"><i
+                                    class="uil-sort-amount-down"></i></button>
                         </div>
-                        <div class="card-body" id="mib-info" style="display:none">
+                        <input type="hidden" value="{{ $data->mib?->id }}">
+                        <div class="card-body" id="mib-info">
                             <form id="mib_information">
                                 <table class="table single-contract">
                                     <tbody>
@@ -1098,6 +1343,22 @@
                                         <td><input type="text" name="note" class="form-control"
                                                    value="{{ $data->mib?->note }}"></td>
                                     </tr>
+                                    <?php 
+					    $user_id = \DB::table('user_regions')->where('region_id', $data->client->region_id)->first()?->user_id;
+					    $user_mib = \App\Models\User::find($user_id);
+				    ?>
+                                    {{--@if($user_mib)--}}
+                                    <tr>
+                                        <th>Ҳодим бириктириш <br> ({{$data->client->region->name}}, {{ $user_mib?->name }})</th>
+					@if (!$data->user_id || \Auth::user()->hasRole('Admin'))
+                                        <input type="hidden" name="user_id" value="{{ $user_id }}" class="form-control">
+					@endif
+                                        <td class="d-flex justify-content-between">
+					    <input type="checkbox" name="user_check" class="form-check" @checked($data->user_id)>
+					    <input type="date" class="form-control inputmaskDate" id="attached_at" value="{{$data->attached_at}}" name="attached_at">
+					</td>
+                                    </tr>
+                                    {{--@endif--}}
                                     <tr style="text-align: right">
                                         <td></td>
                                         <td>
@@ -1124,7 +1385,7 @@
                                 <div class="form-group">
                                     <label for="name">Телефон</label>
                                     <input type="text" name="sms_phone" id="sms_phone" class="form-control" required
-                                           placeholder="998977820809">
+                                           placeholder="998001234567">
                                 </div>
                                 <div class="form-group">
                                     <label for="content">Ҳабар</label>
@@ -1140,9 +1401,116 @@
                         </div>
                     </div>
                 </div>
-
             </div>
 
+        </div>
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card">
+
+                    @if($data->id)
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    @can('Тўлов суммаларини киритиш')
+                                        <form id="contract_payments">
+                                            @csrf
+                                            <input type="hidden" name="payment_id" id="payment_id">
+                                            <input type="hidden" name="contract_id" id="contract_id"
+                                                   value="{{ $data->id }}">
+                                            <input type="hidden" name="client_id" id="client_id"
+                                                   value="{{ $data->client->id }}">
+                                            <div class="row">
+                                                <div class="col-md-12 d-flex align-items-end">
+                                                    <div>
+                                                        <div class="d-flex align-items-end">
+                                                            <div class="mr-3">
+                                                                <label>Тўловлар:</label>
+                                                                <input type="text" name="amount" id="payment_amount"
+                                                                       class="form-control" placeholder="Summa">
+                                                            </div>
+                                                            <div>
+                                                                <label>Сана:</label>
+                                                                <input type="date" name="date" id="payment_date"
+                                                                       class="form-control mr-2" placeholder="Sana">
+                                                            </div>
+                                                        </div>
+                                                        <div class="d-flex align-items-end">
+                                                            <div class="mr-3">
+                                                                <label>Изоҳ:</label>
+                                                                <input type="text" name="note" id="payment_note"
+                                                                       class="form-control mr-2" placeholder="Изоҳ">
+                                                            </div>
+                                                            <div>
+                                                                <label>Тўлов тури:</label>
+                                                                <select name="type" id="payment_type"
+                                                                        class="form-control" required>
+                                                                    <option value="">*** Танланг ***</option>
+                                                                    <option value="1">Plastik</option>
+                                                                    <option value="2">Naqd</option>
+                                                                </select>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <button class="btn btn-danger ml-2 mr-2" type="button"
+                                                            style="display: none" id="contractPayEmpty"
+                                                            onclick="contractPayEmpty()"><i
+                                                            class="fa fa-window-close"></i></button>
+                                                    <button class="btn btn-primary ml-2" type="button" id="contractPay">
+                                                        <i
+                                                            class="fa fa-save"></i></button>
+                                                </div>
+                                            </div>
+                                        </form>
+                                    @endcan
+                                    <br>
+                                </div>
+                                <div class="col-md-6">
+                                    <form id="tax_expense">
+                                        @csrf
+                                        <input type="hidden" name="contract_id" id="contract_id"
+                                               value="{{ $data->id }}">
+                                        <div class="row">
+                                            <div class="col-md-6">Давлат божи:</div>
+                                            <div class="col-md-6">Почта харажати:</div>
+                                            <div class="col-md-6"><input type="text" name="tax" id="tax"
+                                                                         class="form-control"
+                                                                         placeholder="DAVLAT BOJ"
+                                                                         value="{{ $data->tax }}"></div>
+                                            <div class="col-md-6 d-flex">
+                                                <input type="text" name="expense" id="expense" class="form-control"
+                                                       placeholder="POCHTA XARAJATI" value="{{ $data->expense }}">
+                                                <button class="btn btn-primary ml-2" type="button" id="taxExpense"><i
+                                                        class="fa fa-save"></i></button>
+                                            </div>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="card-header d-flex justify-content-between">
+                                        <h6>Нақд тушум</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div id="cp_table_naqd"></div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="card-header d-flex justify-content-between">
+                                        <h6>Aвтотўлов бўйича тушум</h6>
+                                        <button type="button" class="btn-sm btn-primary" onclick="addTrans()"><i
+                                                class="uil-plus"></i></button>
+                                    </div>
+                                    <div class="card-body">
+                                        <div id="cp_table_plastik"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    @endif
+                </div>
+            </div>
         </div>
     </div>
 </div>

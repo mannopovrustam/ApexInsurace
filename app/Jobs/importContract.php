@@ -18,6 +18,7 @@ class importContract implements ShouldQueue
     /**
      * Create a new job instance.
      */
+    protected $tries = 3;
     protected $row;
     public function __construct($row)
     {
@@ -32,21 +33,22 @@ class importContract implements ShouldQueue
         if ($this->row['no'] == null || $this->row['no'] == '') return;
         // time to date
         // contract_date, payment_date
-        $this->row['birthdate'] = \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($this->row['birthdate'])->format('Y-m-d');
-        $this->row['contract_date'] = \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($this->row['contract_date'])->format('Y-m-d');
-        $this->row['payment_date'] = \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($this->row['payment_date'])->format('Y-m-d');
-        // $this->row['category_id'] = \DB::table('categories')->where('name', $this->row['type'])->first()->id;
+
+        if ($this->row['birthdate'] != '')$this->row['birthdate'] = \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($this->row['birthdate'])->format('Y-m-d');
+        if ($this->row['contract_date'] != '')$this->row['contract_date'] = \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($this->row['contract_date'])->format('Y-m-d');
+        if ($this->row['payment_date'] != '')$this->row['payment_date'] = \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($this->row['payment_date'])->format('Y-m-d');
+
         $this->row['category_id'] = $this->row['type'];
 
         $region_id = null; $district_id = null; $type = null;
-        $region_id = \DB::table('regions')->where('id', $this->row['region'])->first()->id;
-        $district_id = \DB::table('districts')->where('region_id', $region_id)->where('id', $this->row['districts'])->first()->id;
+        if ($this->row['region'] != '') $region_id = \DB::table('regions')->where('id', $this->row['region'])->first()->id;
+        if ($this->row['districts'] != '') $district_id = \DB::table('districts')->where('region_id', $region_id)->where('id', $this->row['districts'])->first()->id;
         $type = $this->row['debtor_type'] == 'Жисмоний шахс' ? 0 : 1;
 
         if (!($region_id && $district_id && $this->row['debtor_type'])) return;
-        $client = Client::updateOrCreate([
+//        if (!($this->row['fullname'] && $this->row['passport'])) return;
+        $client = Client::create([
             'passport' => $this->row['passport'],
-        ],[
             "region_id" => $region_id,
             "district_id" => $district_id,
             "fullname" => $this->row['fullname'],
@@ -57,18 +59,17 @@ class importContract implements ShouldQueue
             "dtb" => $this->row['birthdate'],
             "type" => $type,
         ]);
-        Contract::updateOrCreate([
-            "number" => $this->row['contract_no']
-        ],[
-            "client_id" => $client->id,
-            "category_id" => $this->row['category_id'],
-            "number" => $this->row['contract_no'],
-            "name" => $this->row['contract_name'],
-            "date_payment" => $this->row['payment_date'],
-            "date" => $this->row['contract_date'],
-            "amount" => $this->row['amount'],
-            "amount_paid" => $this->row['amount_paid']
-        ]);
+        if (!$client) return;
+            Contract::create([
+                "client_id" => $client->id,
+                "category_id" => $this->row['category_id'],
+                "number" => $this->row['contract_no'],
+                "name" => $this->row['contract_name'],
+                "date_payment" => $this->row['payment_date'],
+                "date" => $this->row['contract_date'],
+                "amount" => $this->row['amount'],
+                "amount_paid" => $this->row['amount_paid'],
+            ]);
         //  User::auditable('contracts', $contract->id, $contract, 'C');
     }
 }

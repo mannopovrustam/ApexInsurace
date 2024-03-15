@@ -54,51 +54,52 @@ class PetitionController extends Controller
                 ->where([['region_id', $data->client->region_id], ['district_id', $data->client->district_id]])
                 ->select('judges.*')->first();
 
-            $curdate = now()->format('Y') . ' йил ' . now()->translatedFormat('d M');
-            $date = Carbon::createFromFormat('Y-m-d', $data->date)->format('Y') . ' йил ' . Carbon::createFromFormat('Y-m-d', $data->date)->translatedFormat('d M');
+            $curdate = Carbon::now()->translatedFormat('d-F') . ' ' . Carbon::now()->format('Y') . ' yil ';
+            $date = Carbon::parse($data->date)->translatedFormat('d-F') . ' ' . Carbon::parse($data->date)->translatedFormat('Y')  . ' yil ';
             $user = auth()->user();
 
             $changeVal = [
                 'contract_id' => $data->id,
-                'category_name' => $data->category->name,
-                'number' => $data->number,
-                'contract_name' => $data->name,
-                'contract_date' => $date,
+                'category_name' => $this->cyrillicToLatin($data->category->name),
+                'number' => $this->cyrillicToLatin($data->number),
+                'contract_name' => $this->cyrillicToLatin($data->name),
+                'contract_date' => $this->cyrillicToLatin($date),
                 'inn' => $data->client->inn,
                 'mfo' => $data->client->mfo,
-                'account_number' => $data->client->account_number,
-                'fullname' => $data->client->fullname,
-                'passport' => $data->client->passport,
+                'account_number' => $this->cyrillicToLatin($data->client->account_number),
+                'fullname' => $this->cyrillicToLatin($data->client->fullname),
+                'passport' => $this->cyrillicToLatin($data->client->passport),
                 'pinfl' => $data->client->pinfl,
-                'phone' => $data->phone,
-                'address' => $data->client->address,
+                'phone' => $data->client->phone,
+                'address' => $this->cyrillicToLatin($data->client->address),
                 'dtb' => Carbon::parse($data->client->dtb)->format('d.m.Y'),
-                'type' => $data->client->type ? 'Юридик шахс' : 'Жисмоний шахс',
+                'type' => $this->cyrillicToLatin($data->client->type ? 'Юридик шахс' : 'Жисмоний шахс'),
                 'date_payment' => Carbon::parse($data->date_payment)->format('d.m.Y'),
                 'amount_sum' => number_format($data->amount, 0, ',', ' '),
                 'amount_paid' => number_format($data->amount_paid, 0, ',', ' '),
                 'residue' => round(($data->amount - $data->amount_paid), 2),
                 'status' => Client::STATUS_COLOR[$data->status],
-                'contract_note' => $data->note,
+                'contract_note' => $this->cyrillicToLatin($data->note),
                 'created_at' => Carbon::parse($data->created_at)->format('d.m.Y'),
                 'tax' => $data->tax,
                 'expense' => $data->expense,
-                'judge_name' => $judge->$type,
+                'bank_name' => $data->bank_name,
+                'judge_name' => $this->cyrillicToLatin($judge->$type),
                 'judge_no' => $data->judge?->work_number,
-                'judge_result' => $data->judge?->result,
-                'judge_note' => $data->judge?->note,
-                'mib_name' => $data->mib?->name,
+                'judge_result' => $this->cyrillicToLatin($data->judge?->result),
+                'judge_note' => $this->cyrillicToLatin($data->judge?->note),
+                'mib_name' => $this->cyrillicToLatin($data->mib?->name),
                 'mib_no' => $data->mib?->work_number,
-                'mib_result' => $data->mib?->result,
-                'mib_note' => $data->mib?->note,
-                'curdate' => $curdate,
-                'admin_name' => $user->name,
+                'mib_result' => $this->cyrillicToLatin($data->mib?->result),
+                'mib_note' => $this->cyrillicToLatin($data->mib?->note),
+                'curdate' => $this->cyrillicToLatin($curdate),
+                'admin_name' => $this->cyrillicToLatin($user->name),
                 'admin_phone' => $user->phone,
             ];
 
             $doc_template = DocTemplate::find($request->template_id);
 
-            $filePath = public_path($doc_template->template);
+            $filePath = $doc_template->template;
 
             $templateProcessor = new TemplateProcessor($filePath);
             foreach ($changeVal as $key => $value) {
@@ -158,4 +159,23 @@ class PetitionController extends Controller
             'message' => 'Успешно удалено!'
         ]);
     }
+
+    function cyrillicToLatin($text) {
+        $cyrillic = array(
+            'а', 'б', 'в', 'г', 'д', 'е', 'ё', 'ж', 'з', 'и', 'й', 'к', 'л', 'м', 'ў', 'ғ', 'қ', 'ҳ',
+            'н', 'о', 'п', 'р', 'с', 'т', 'у', 'ф', 'х', 'ц', 'ч', 'ш', 'ъ', 'ь', 'э', 'ю', 'я',
+            'А', 'Б', 'В', 'Г', 'Д', 'Е', 'Ё', 'Ж', 'З', 'И', 'Й', 'К', 'Л', 'М', 'Ў', 'Ғ', 'Қ', 'Ҳ',
+            'Н', 'О', 'П', 'Р', 'С', 'Т', 'У', 'Ф', 'Х', 'Ц', 'Ч', 'Ш', 'Ъ', 'Ь', 'Э', 'Ю', 'Я'
+        );
+
+        $latin = array(
+            'a', 'b', 'v', 'g', 'd', 'e', 'yo', 'j', 'z', 'i', 'y', 'k', 'l', 'm', 'o‘', 'g‘', 'q', 'h',
+            'n', 'o', 'p', 'r', 's', 't', 'u', 'f', 'x', 'ts', 'ch', 'sh', '\'', '', 'e', 'yu', 'ya',
+            'A', 'B', 'V', 'G', 'D', 'E', 'Yo', 'J', 'Z', 'I', 'Y', 'K', 'L', 'M', 'O‘', 'G‘', 'Q', 'H',
+            'N', 'O', 'P', 'R', 'S', 'T', 'U', 'F', 'X', 'Ts', 'Ch', 'Sh', '\'', '', 'E', 'Yu', 'Ya'
+        );
+
+        return str_replace($cyrillic, $latin, $text);
+    }
+
 }

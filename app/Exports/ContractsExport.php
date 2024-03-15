@@ -19,7 +19,7 @@ class ContractsExport implements FromCollection
      * It's required to define the fileName within
      * the export class when making use of Responsable.
      */
-    private $fileName = 'users.xlsx';
+    private $fileName = 'contracts.xlsx';
 
     /**
      * Optional Writer Type
@@ -33,59 +33,55 @@ class ContractsExport implements FromCollection
         'Content-Type' => 'text/csv',
     ];
     private $ids;
-    public function __construct($ids)
+    public function __construct()
     {
-        $this->ids = $ids;
+        //
     }
 
     public function collection()
     {
+        $names = [
+            "SHARTNOMA ID",
+            "SHARTNOMA NOMI",
+            "SHARTNOMA RAQAM",
+            "SANA",
+            "TO'LOV SANASI",
+            "SUG'URTA TOVONI SUMMASI",
+            "JAMI QARZDORLIK",
+            "TO'LANGAN SUMMA",
+            "YARATILGAN SANA",
+            "YOPILGAN",
+            "TO'LIQ ISM",
+            "TELEFON",
+            "PASPORT",
+            "PINFL",
+            "STIR",
+            "KATEGORIYA NOMI",
+            "MIB RAQAMI",
+            "SUD RAQAMI",
+            "SUD NOMI",
+            "QOLDIQ QARZDORLIK",
+            "РЕГИОН",
+            "ҲОДИМ",
+            "ҲОДИМГА ТОПШИРИЛГАН САНА",
+            "АВТОСПИСАНИЯ",
+        ];
 
-        $contracts = Contract::with(['client.region', 'client.district', 'category', 'files', 'petitions', 'hybrids', 'judge', 'mib', 'sms', 'payments'])
-            ->whereIn('id', $this->ids)->get();
+//        $data = json_decode(json_encode(\DB::select(session('contracts_query'))), true);
 
-        $data = [];
+        $query = session('contracts_query');
+        $query = str_replace(" `users`.`name` as `user_name`,", "", $query);
+        $query = str_replace(" from `contracts`", ", regions.name as region, users.name as user_name, contracts.attached_at as attached_at from `contracts`", $query);
+        $query = str_replace("select ", "select contracts.id, ", $query);
+        $query = str_replace("`contracts`.`amount`,", "`contracts`.`amount`,contracts.amount+contracts.tax+contracts.expense as all_amount,", $query);
+        $query = str_replace("sum(contract_payments.amount) as payment_total", "contracts.amount+contracts.tax+contracts.expense - contracts.amount_paid as all_amount_left", $query);
+        $query = str_replace("`contracts`.`judge_number` as `judge_no`, ", "`contracts`.`judge_number` as `judge_no`, `contracts`.`judge_name`, ", $query);
+        $query = str_replace("attached_at from", "attached_at, contracts.auto_pay_activate from", $query);
+	\Log::info($query);
 
-        foreach ($contracts as $contract){
-            if($contract->client->type == 1) $type = 'Юридик шахс';
-            else $type = 'Жисмоний шахс';
-            $data[] = [
-                $contract->id,
-                Client::STATUS_NAME[$contract->status],
-                $contract->number,
-                $contract->client->fullname,
-                $contract->client->dtb,
-                $contract->client->passport,
-                $contract->client->pinfl,
-                $contract->client->region->name,
-                $contract->client->district->name,
-                $contract->client->address,
-                $contract->client->phone,
-                $contract->category->name,
-                $contract->number,
-                $contract->name,
-                $contract->created_at,
-                $type,
-                $contract->date_payment,
-                $contract->amount,
-                $contract->expense,
-                $contract->tax,
-                $contract->payments->sum('amount'),
-                $contract->payments->implode('date', ', '),
-                $contract->amount - $contract->payments->sum('amount'),
-                $contract->judge?->name,
-                $contract->judge?->work_number,
-                $contract->judge?->result,
-                $contract->judge?->note,
-                $contract->mib?->name,
-                $contract->mib?->work_number,
-                $contract->mib?->result,
-                $contract->mib?->note,
-                count($contract->sms) > 0 ? $contract->sms?->first()->created_at->format('d.m.Y') : null,
-                count($contract->hybrids) > 0 ? $contract->hybrids?->first()->created_at->format('d.m.Y') : null,
-            ];
-        }
+        $data = json_decode(json_encode(\DB::select($query)), true);
 
-        return collect($data);
+        return collect($data)->prepend($names);
     }
+
 }

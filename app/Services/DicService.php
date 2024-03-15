@@ -110,6 +110,22 @@ class DicService extends Controller
         return back()->with('message', 'SMS муваффакиятли ўчирилди.');
     }
 
+    public function getContractName()
+    {
+        $sms = DB::table('contract_names')->whereNull('contract_id')->orWhereNull('client_id')->get();
+        return view('view.dic.contract_name', ['sms' => $sms]);
+    }
+
+    public function postContractName(Request $request)
+    {
+        DB::table('contract_names')->updateOrInsert(
+            ['contract_name' => $request->contract_name],
+            $request->except('_token'));
+        if ($request->id) return back()->with('message', 'Шартнома муваффакиятли янгиланди.');
+        return back()->with('success', 'Шартнома муваффакиятли сақланди.');
+    }
+
+
     public function getDocs()
     {
         $docs = DB::table('doc_templates')->get();
@@ -122,7 +138,7 @@ class DicService extends Controller
         if ($request->hasFile('template')) {
             $file = $request->file('template');
             $filename = $file->getClientOriginalName();
-            $filepath = $file->move('/petition/template', $filename);
+            $filepath = $file->move(public_path('/petition/template'), $filename);
             $doc->template = $filepath;
             $doc->save();
         }

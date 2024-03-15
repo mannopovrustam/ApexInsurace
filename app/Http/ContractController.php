@@ -20,14 +20,15 @@ use App\Models\Contract\ContractSms;
 use App\Models\Petition;
 use App\Models\User;
 use App\Services\EmitRepaymentService;
-use App\Services\UniAccessService;
 use App\Services\FakturaService;
+use App\Services\IncardService;
+use App\Services\UniAccessService;
 use Carbon\Carbon;
 use DB;
 use Exception;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Str;
 use Maatwebsite\Excel\Facades\Excel;
 use PhpOffice\PhpWord\TemplateProcessor;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
@@ -344,8 +345,8 @@ class ContractController extends Controller
 
         $con = Contract::find($request->contract_id);
 
-	    $validate["created_by"] = auth()->id();
-	    $validate["user_id"] = $con->user_id;
+        $validate["created_by"] = auth()->id();
+        $validate["user_id"] = $con->user_id;
         ContractPayment::updateOrCreate(['id' => $request->payment_id],$validate);
 
 
@@ -375,11 +376,13 @@ class ContractController extends Controller
         $con->update(['amount_paid' => $payments]);
 
         $residue = (($con->amount+$con->tax+$con->expense) - $payments)*100;
+
         if ($con->auto_pay) $this->emitRepayment->autopayUpdate($con->auto_pay, (int)$residue);
         $this->uniAccess->debitUpdate($con->contract_name, (int)$residue);
 
         if (($con->amount_paid - ($con->amount+$con->tax+$con->expense)) > -0.99){
             $con->update(['status' => 10, 'closed_at' => Carbon::now(), 'auto_pay_activate' => false]);
+
             if ($con->auto_pay) $this->emitRepayment->autopayStop($con->auto_pay);
             $this->uniAccess->autopayToggle($con->contract_name, false);
         }
@@ -405,22 +408,20 @@ class ContractController extends Controller
             }
         } elseif ($data->uni_trans_id){
             $cap = \DB::table('auto_uni_pays')->where('id', $data->uni_trans_id)->first();
-            if($cap){
-                $res = json_decode($this->uniAccess->paymentCancel($cap->ext_id, $cap->transaction_id),true);
-//                $res = json_decode($res,true);
-                if($res['status']){
-                    $r = Arr::except($res['result'], ['client', 'updated_at','is_sent','refunded_by']);
+            $res = json_decode($this->uniAccess->paymentCancel($cap->ext_id, $cap->transaction_id),true);
+            $res = json_decode($res,true);
+            if($res['status']){
+                $r = Arr::except($res['result'], ['client', 'updated_at','is_sent','refunded_by']);
 
-                    $r['date'] = Carbon::parse($r['date'])->format('Y-m-d');
-                    $r['refunded_at'] = Carbon::parse($r['refunded_at'])->format('Y-m-d H:i:s');
-                    $r['created_at'] = Carbon::parse($r['created_at'])->format('Y-m-d H:i:s');
+                $r['date'] = Carbon::parse($r['date'])->format('Y-m-d');
+                $r['refunded_at'] = Carbon::parse($r['refunded_at'])->format('Y-m-d H:i:s');
+                $r['created_at'] = Carbon::parse($r['created_at'])->format('Y-m-d H:i:s');
 
-                    if (!\DB::table('auto_uni_pays')->where([['transaction_id', $r['transaction_id']],['status', $r['status']]])->first())
-                        \DB::table('auto_uni_pays')->insert($r);
-                    if ($r['status'] == 'Cancelled') $data->update(['cancelled'=>true]);
-                }
+                if (!\DB::table('auto_uni_pays')->where([['transaction_id', $r['transaction_id']],['status', $r['status']]])->first())
+                    \DB::table('auto_uni_pays')->insert($r);
+                if ($r['status'] == 'Cancelled') $data->update(['cancelled'=>true]);
             }
-        } else{
+        }else{
             $data->update(['cancelled'=>true]);
         }
 
@@ -453,8 +454,6 @@ class ContractController extends Controller
         }
         $cp = $cp->get();
         foreach ($cp as $c){
-            $service_name = null;
-            if ($c->auto_pay_trans_id) $service_name = \DB::table('contract_auto_pays')->where('id', $c->auto_pay_trans_id)->first()->service_name;
             $html .= "<tr><td>".number_format($c->amount,2,"."," ")."</td><td>".Carbon::parse($c->date)->format('d.m.Y')."</td>";
             $html .= "<td>".( $c->cancelled ? 'Cancelled':$c->note )."</td>";
             $html .= "<td>".
@@ -580,7 +579,7 @@ class ContractController extends Controller
     {
 	    ini_set("memory_limit", "1G");
 	    if ($request->type == 'payments') return Excel::download(new ContractPaymentsExport(), 'contractPayments.xlsx');
-            if ($request->type == 'contracts') return Excel::download(new ContractsExport(), 'contracts.xlsx'); 
+            if ($request->type == 'contracts') return Excel::download(new ContractsExport(), 'contracts.xlsx');
     }
     public function getGroupSms(Request $request)
     {
@@ -722,8 +721,8 @@ class ContractController extends Controller
 
     public function postJudgeInfo(Request $request, $id)
     {
-        ContractJudge::updateOrCreate(['contract_id' => $id], $request->except(['_token','autopay_start_dt']));
-	\DB::table('contracts')->where('id',$id)->update(['judge_number'=>$request->work_number,'autopay_start_dt'=>$request->autopay_start_dt]);
+        ContractJudge::updateOrCreate(['contract_id' => $id], $request->except('_token'));
+	\DB::table('contracts')->where('id',$id)->update(['judge_number'=>$request->work_number]);
         $contract = Contract::find($id);
         if ($contract->status <= 2){
             $contract->status = 3;
@@ -770,61 +769,10 @@ class ContractController extends Controller
     }
 
     public function getAutoPayRefresh($date){
-        $uniDate = Carbon::parse($date)->format('Y-m-d');
         $date = Carbon::parse($date)->format('Ymd');
 	\Log::info($date);
         $transAll = $this->emitRepayment->transHistory($date,$date);
         $transAll = json_decode($transAll, true);
-
-        $transAllUni = $this->uniAccess->getPayments($uniDate);
-        $transAllUni = json_decode($transAllUni, true);
-        if ($transAllUni['status']){
-            foreach ($transAllUni['result']['payments'] as $value){
-                if (!\DB::table('auto_uni_pays')->where([['transaction_id', $value['transaction_id']],['status', $value['status']]])->first()){
-                    $details = [
-                        'pinfl' => $value['pinfl'],
-                        'loan_id' => $value['loan_id'],
-                        'rrn' => $value['rrn'],
-                        'transaction_id' => $value['transaction_id'],
-                        'ext_id' => $value['ext_id'],
-                        'card_mask' => $value['card_mask'],
-                        'card_owner' => $value['card_owner'],
-                        'amount' => $value['amount'],
-                        'date' => Carbon::parse($value['date'])->format('Y-m-d'),
-                        'terminal' => $value['terminal'],
-                        'merchant' => $value['merchant'],
-                        'filial_id' => $value['filial_id'],
-                        'type' => $value['type'],
-                        'status' => $value['status'],
-                        'refunded_at' => Carbon::parse($value['refunded_at'])->format('Y-m-d H:i:s'),
-                        'created_at' => Carbon::parse($value['created_at'])->format('Y-m-d H:i:s'),
-                        'created_at_utc' => Carbon::parse($value['created_at_utc'])->format('Y-m-d H:i:s'),
-                    ];
-                    \DB::table('auto_uni_pays')->insert($details);
-                }
-
-                $contract_name = \DB::table('contract_names')->where('contract_name', $value['loan_id'])->first();
-
-                $con = Contract::find($contract_name->contract_id);
-
-                $payments = ContractPayment::where([
-                    ['client_id', $contract_name->client_id],
-                    ['contract_id', $contract_name->contract_id],
-                    ['cancelled', false]
-                ])->sum('amount');
-
-                $residue = (($con->amount+$con->tax+$con->expense) - $payments)*100;
-
-                if ($con->auto_pay) $this->emitRepayment->autopayUpdate($con->auto_pay, (int)$residue);
-
-                if (($con->amount_paid - ($con->amount+$con->tax+$con->expense)) > -0.99){
-                    $con->update(['status' => 10, 'closed_at' => Carbon::now(), 'auto_pay_activate' => false]);
-                    if ($con->auto_pay) $this->emitRepayment->autopayStop($con->auto_pay);
-                }
-
-            }
-        }
-
 
         if ($transAll['result']){
             foreach ($transAll['result'] as $r){
@@ -850,24 +798,6 @@ class ContractController extends Controller
                     ];
                     \DB::table('contract_auto_pays')->insert($details);
                 }
-
-                $contract_name = \DB::table('contract_names')->where('contractId', $r['contractId'])->first();
-
-                $con = Contract::find($contract_name->contract_id);
-
-                $payments = ContractPayment::where([
-                    ['client_id', $contract_name->client_id],
-                    ['contract_id', $contract_name->contract_id],
-                    ['cancelled', false]
-                ])->sum('amount');
-
-                $residue = (($con->amount+$con->tax+$con->expense) - $payments)*100;
-
-                $this->uniAccess->debitUpdate($con->contract_name, (int)$residue);
-
-                if ((($con->amount_paid - ($con->amount+$con->tax+$con->expense)) > -0.99) && $con->auto_pay)
-                    $this->uniAccess->autopayToggle($con->contract_name, false);
-
             }
         }
         return response()->json(['message'=>'Муваффақиятли янгиланди!', 'color'=>'green']);
@@ -875,6 +805,7 @@ class ContractController extends Controller
 
     public function getAutoPay(Request $request, $id)
     {
+        $contract_f = null;
         if (isset($request->contract_name) && $request->contract_name != \DB::table('contracts')->where('id',$id)->first()->contract_name){
             \DB::table('contracts')->where('id',$id)->update([
                 'contract_name' => $request->contract_name,
@@ -904,18 +835,16 @@ class ContractController extends Controller
 
         \Log::info($contract->groupBy('contracts.id')->toSql());
         $contract = $contract->groupBy('contracts.id')->first();
-        
+        $conName = \DB::table('contract_names')->where('contract_name', $contract_f->contract_name)->first();
+
         $residue = $contract->residue == null ? 0.00 : $contract->residue*100;
 
 //        return response()->json(['message'=>"Hali ishga tushmagan!", 'color'=>'red']);
 
         $uniAccess = json_decode($this->uniAccess->clientCreate($contract), true);
-        if ($uniAccess['status'] || (!$uniAccess['status'] && $uniAccess['error']['message'] == "Client with loan_id={$contract->contract_name} ({$contract->id}) already exists!")) {
-            \DB::table('contracts')->where('id', $contract->id)->update(['auto_pay_uniaccess_activate' => true]);
-        }
-
-        $emitClient = json_decode($this->emitRepayment->clientCreate($contract), true);
-        if ($emitClient['result']) {
+//        $emitClient = json_decode($this->emitRepayment->clientCreate($contract), true);
+        $emitClient = [];
+/*        if ($emitClient['result']) {
             $emitClient = $emitClient['result'];
             if (!(isset($emitClient['contractId']) && isset($emitClient['clientId']))) return response()->json(['message'=>'Parameter not found!', 'color'=>'red']);
             $con = \DB::table('contracts')->where('autopay_id', $emitClient['contractId']);
@@ -927,36 +856,42 @@ class ContractController extends Controller
                     'contractId' => $emitClient['contractId']
                 ]);
             }
-            if ($cli->count() == 0) \DB::table('clients')->where('id', $contract->client_id)->update(['autopay_id' => $emitClient['clientId']]);
-        }else{
+            if ($cli->count() == 0) {
+                \DB::table('clients')->where('id', $contract->client_id)->update(['autopay_id' => $emitClient['clientId']]);
+                \DB::table('contract_names')->where('contract_name', $contract->contract_name)->update([
+                    'clientId' => $emitClient['clientId']
+                ]);
+            }
+        }*/
+        /*else{
             return response()->json(['message'=>$emitClient["error"]['message'], 'color'=>'red']);
-        }
+        }*/
 
         if ($contract->residue <= 0) return response()->json(['message'=>'Paid for this contract', 'color'=>'red']);
 
         if ($request->action == 'false' && $contract->auto_pay_activate && $contract->auto_pay) {
-            $uniAccess = json_decode($this->uniAccess->autopayToggle($contract->contract_name, false), true);
+            $uniAccess = json_decode($this->uniAccess->autopayToggle($conName->contract_name, false), true);
             $emitAutopay = json_decode($this->emitRepayment->autopayPause($contract->auto_pay), true);
             if ($emitAutopay['result'] || $uniAccess["status"]) {
-                \DB::table('contracts')->where('id', $contract->id)->update(['auto_pay_activate' => false, 'auto_pay_uniaccess_activate' => false]);
+                \DB::table('contracts')->where('id', $contract->id)->update(['auto_pay_activate' => false]);
                 return response()->json(['message'=>"Autopay for {$contract->contract_name} contract paused.", 'color'=>'green']);
             }
             else{
 		        if ($emitAutopay['result'] == null && $emitAutopay['error']['message'] == 'AutoPayment is finished!') {
-            	    \DB::table('contracts')->where('id', $contract->id)->update(['auto_pay_activate' => false, 'auto_pay_uniaccess_activate' => false]);
+            	    \DB::table('contracts')->where('id', $contract->id)->update(['auto_pay_activate' => false]);
             	    return response()->json(['message'=>"{$contract->contract_name} - AutoPayment is finished!", 'color'=>'green']);
-                }
+         	    }
                 return response()->json(['message'=>$emitAutopay["error"]['message'], 'color'=>'red']);
             }
         }else{
             if (!$contract->auto_pay_activate && $contract->auto_pay) {
-                $uniAccess = json_decode($this->uniAccess->autopayToggle($contract->contract_name, true), true);
-                $emitAutopay = json_decode($this->emitRepayment->autopayResume($contract->auto_pay), true);
-                if ($emitAutopay['result'] || $uniAccess["status"]) {
+                $uniAccess = json_decode($this->uniAccess->autopayToggle($conName->contract_name, true), true);
+//                $emitAutopay = json_decode($this->emitRepayment->autopayResume($contract->auto_pay), true);
+                if ($uniAccess["status"]) {
                     \DB::table('contracts')->where('id', $contract->id)->update(['auto_pay_activate' => true]);
                     return response()->json(['message'=>"Autopay for {$contract->contract_name} contract resume.", 'color'=>'green']);
                 }
-                else return response()->json(['message'=>$emitAutopay["error"]['message'], 'color'=>'red']);
+//                else return response()->json(['message'=>$emitAutopay["error"]['message'], 'color'=>'red']);
             }
             if (!$contract->auto_pay) {
                 $new_contract = \DB::table('contracts')->where('id',$id)->first();
@@ -967,39 +902,29 @@ class ContractController extends Controller
 
                 $residue_new = (($new_contract->amount+$new_contract->tax+$new_contract->expense) - $payments)*100;
 
-                $detailsAutopay = [ "contractId"=> $emitClient['contractId'],
+                /*$detailsAutopay = [ "contractId"=> $emitClient['contractId'],
                     "amount"=> (int)$residue_new,
                     "startDate"=> date('Ymd')
-                ];
-                \Log::info('detailsAutopay: '. json_encode($detailsAutopay));
+                ];*/
+//                \Log::info('detailsAutopay: '. json_encode($detailsAutopay));
 
-                $uniAccess = json_decode($this->uniAccess->autopayToggle($contract->contract_name, true), true);
+                $this->uniAccess->autopayToggle($contract->contract_name, true);
 
-                $emitAutopay = json_decode($this->emitRepayment->autopayCreate($detailsAutopay), true);
-                if($emitAutopay['result'] || $uniAccess["status"]){
-                    if($emitAutopay['result']){
-                        \DB::table('contracts')->where('id', $contract->id)->update([
-                            'autopay_id'=>$emitAutopay['result']['contractId'],
-                            'auto_pay'=>$emitAutopay['result']['autopayId'],
-                            'auto_pay_activate' => true
-                        ]);
-                        \DB::table('contract_names')->where('contract_name', $contract->contract_name)->update([
-                            'contractId' => $emitAutopay['result']['contractId']
-                        ]);
-                    }
+                /*$emitAutopay = json_decode($this->emitRepayment->autopayCreate($detailsAutopay), true);
+                if($emitAutopay['result']){
+                    \DB::table('contracts')->where('id', $contract->id)->update([
+                        'autopay_id'=>$emitAutopay['result']['contractId'],
+                        'auto_pay'=>$emitAutopay['result']['autopayId'],
+                        'auto_pay_activate' => true
+                    ]);
+                    \DB::table('contract_names')->where('contract_name', $contract->contract_name)->update([
+                        'contractId' => $emitAutopay['result']['contractId']
+                    ]);
 
-                    if($uniAccess['status']){
-                        \DB::table('contracts')->where('id', $contract->id)->update([
-                            'auto_pay_activate' => true
-                        ]);
-                    }
-                    $txt = 'emitAutopay-'. $emitAutopay['result']['success'];
-                    $txt .= ' && uniAccess-'. $uniAccess['status'];
-                    
-                    return response()->json(['message'=>"Autopay for {$contract->contract_name} contract created. $txt", 'color'=>'green']);
+                    return response()->json(['message'=>"Autopay for {$contract->contract_name} contract created.", 'color'=>'green']);
                 }else{
                     return response()->json(['message'=>$emitAutopay["error"]['message'], 'color'=>'red']);
-                }
+                }*/
             }
         }
     }

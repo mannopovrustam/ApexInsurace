@@ -195,6 +195,7 @@
                     var guestname = ''
                     if (data.status == 'success') {
                         guestname = data.data.fullname;
+                        $('#client_id').val(data.data.id);
                         $('#fullname').val(data.data.fullname);
                         $('#address').val(data.data.address);
                         $('#region_id').val(data.data.region_id)
@@ -265,6 +266,7 @@
                         <form action="/contracts" method="post" enctype="multipart/form-data">
                             @csrf
                             <input type="hidden" name="data_id" value="{{$data->id}}">
+                            <input type="hidden" name="client_id" id="client_id" value="{{$data->client_id}}">
                             <div class="row">
 
                                 <div class="col-md-3">
@@ -288,7 +290,7 @@
                                         <label for="dtb">Туғилган санаси</label>
                                         <input type="date" class="form-control" id="dtb"
                                                value="{{ isset($data->id) ? $data->client->dtb : old('dtb') }}"
-                                               name="dtb" placeholder="00.00.0000" required>
+                                               name="dtb" placeholder="00.00.0000">
                                     </div>
                                 </div>
                                 <div class="col-md-3">
@@ -312,7 +314,9 @@
                                                             @foreach($category->categories as $c)
                                                                 @can($c->permission)
                                                                     <option
-                                                                            value="{{ $c->id }}" @selected($c->id == $data->category_id)>{{ $c->name }}</option>
+                                                                            value="{{ $c->id }}" @selected($c->id == $data->category_id)
+                                                                            @if(!isset($data->category_id)) @if(session()->get('category_id') == $c->id) selected @endif @endif
+                                                                    >{{ $c->name }}</option>
                                                                 @endcan
                                                             @endforeach
                                                         </optgroup>
@@ -320,7 +324,8 @@
                                                 @else
                                                     @can($category->permission)
                                                         <option
-                                                                value="{{$category->id}}" @selected($category->id == $data->category_id)>
+                                                                value="{{$category->id}}" @selected($category->id == $data->category_id)
+                                                                @if(!isset($data->category_id)) @if(session()->get('category_id') == $c->id) selected @endif @endif>
                                                             {{$category->name}}
                                                         </option>
                                                     @endcan
@@ -333,7 +338,7 @@
                                     <div class="form-group">
                                         <label for="brand">Шартнома рақами</label>
                                         <input type="text" class="form-control" id="number"
-                                               value="{{ isset($data->id) ? $data->number : old('number') }}"
+                                               value="{{ isset($data->id) ? $data->number : session()->get('number') }}"
                                                name="number" placeholder="Шартнома рақами">
                                     </div>
                                 </div>
@@ -341,7 +346,7 @@
                                     <div class="form-group">
                                         <label for="name">Шартнома номи</label>
                                         <input type="text" class="form-control" id="name"
-                                               value="{{ isset($data->id) ? $data->name : old('name') }}"
+                                               value="{{ isset($data->id) ? $data->name : session()->get('name') }}"
                                                name="name" placeholder="Шартнома номи">
                                     </div>
                                 </div>
@@ -349,7 +354,7 @@
                                     <div class="form-group">
                                         <label for="date">Шартнома санаси</label>
                                         <input type="date" class="form-control " id="date"
-                                               value="{{ isset($data->id) ? $data->date : old('date') }}"
+                                               value="{{ isset($data->id) ? $data->date : session()->get('date') }}"
                                                name="date" placeholder="Шартнома санаси">
                                     </div>
                                 </div>
@@ -399,7 +404,8 @@
                                                 style="padding:1px 6px 3px 5px; cursor: pointer"
                                                 id="add-input">+</span>
                                         <div id="input-container">
-                                            @forelse(explode(',', $data->client->phone) as $key => $phone)
+                                            @foreach(explode(',', $data->client->phone) as $key => $phone)
+                                                @if(!empty($phone))
                                                 <div class="input-group mt-1" id="group_{{ $key+1 }}">
                                                     <div class="input-group-text" style="cursor: pointer"
                                                          onclick="removeInput('{{$key+1}}')"><i class="fa fa-minus"></i>
@@ -408,8 +414,8 @@
                                                            class="form-control" value="{{ $phone }}"
                                                            placeholder="XXYYYYYYY" required>
                                                 </div>
-                                            @empty
-                                            @endforelse
+                                                @endif
+                                            @endforeach
                                         </div>
                                     </div>
                                 </div>
@@ -420,8 +426,8 @@
                                         <label for="type">Қарздор шакли</label>
                                         <select class="form-select" name="type" id="type" required>
                                             <option value="">*** Шахс танланг ***</option>
-                                            <option value="0" @selected($data->client->type == 0)>Жисмоний шахс</option>
-                                            <option value="1" @selected($data->client->type == 1)>Юридик шахс</option>
+                                            <option value="0" @if($data->client->type == 0) selected @else @if(session()->get('type') == "0") selected @endif @endif>Жисмоний шахс</option>
+                                            <option value="1" @if($data->client->type == 1) selected @else @if(session()->get('type') == "1") selected @endif @endif>Юридик шахс</option>
                                         </select>
                                     </div>
                                 </div>
@@ -458,7 +464,7 @@
                                     <div class="form-group">
                                         <label for="inn">ИНН</label>
                                         <input type="text" class="form-control" id="inn" name="inn"
-                                               value="{{ isset($data->id) ? $data->inn : old('inn') }}"
+                                               value="{{ isset($data->id) ? $data->client->inn : session('inn') }}"
                                                placeholder="ИНН">
                                     </div>
                                 </div>
@@ -466,7 +472,7 @@
                                     <div class="form-group">
                                         <label for="mfo">МФО</label>
                                         <input type="text" class="form-control" id="mfo" name="mfo"
-                                               value="{{ isset($data->id) ? $data->mfo : old('mfo') }}"
+                                               value="{{ isset($data->id) ? $data->client->mfo : session('mfo') }}"
                                                placeholder="МФО">
                                     </div>
                                 </div>
@@ -475,16 +481,28 @@
                                         <label for="account_number">Ҳисоб рақам</label>
                                         <input type="text" class="form-control" id="account_number"
                                                name="account_number"
-                                               value="{{ isset($data->id) ? $data->account_number : old('account_number') }}"
+                                               value="{{ isset($data->id) ? $data->client->account_number : session('account_number') }}"
                                                placeholder="Ҳисоб рақам">
                                     </div>
                                 </div>
 
+                                <div class="col-md-3">
+                                    <div class="form-group">
+                                        <label for="bank_name">Банк номи</label>
+                                        <input type="text" class="form-control" id="bank_name"
+                                               name="bank_name"
+                                               value="{{ isset($data->id) ? $data->bank_name : '' }}"
+                                               placeholder="Банк номи">
+                                    </div>
+                                </div>
+
+
                                 {{-- add dynamical input --}}
 
 
-                                <div class="form-group mt-3 d-flex justify-content-between align-items-end">
 
+                                <div class="form-group mt-3 d-flex justify-content-between align-items-end">
+{{--
                                     <div class="col-md-6">
                                         <label for="clients">Шартномага тегишли шахслар</label> <span
                                                 class="btn-sm btn-primary"
@@ -511,6 +529,7 @@
                                             @endif
                                         </div>
                                     </div>
+--}}
 
                                     <button type="submit" class="btn btn-success">Saqlash</button>
                                 </div>

@@ -57,6 +57,17 @@
                     </div>
                     <div class="col-xs-12 col-sm-12 col-md-12">
                         <div class="form-group">
+                            <strong>Region:</strong>
+                            <select class="select2 form-control select2-multiple" multiple="multiple" id="region_id" required data-placeholder="Танлаш ...">
+                                <option value="">***Танланг***</option>
+                                @foreach(\App\Models\Region::all() as $r)
+                                    <option value="{{ $r->id }}">{{ $r->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-xs-12 col-sm-12 col-md-12">
+                        <div class="form-group">
                             <strong>Role:</strong>
                             {!! Form::select('roles[]', $roles,[], array('class' => 'form-control','multiple')) !!}
                         </div>

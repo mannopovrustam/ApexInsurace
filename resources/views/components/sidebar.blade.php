@@ -66,6 +66,7 @@
                         <li><a href="/dic/client">Мижозлар</a></li>
                         @endcan
                         <li><a href="/dic/category">Иш туркуми</a></li>
+                        <li><a href="/dic/contract-name">Шартнома номлари</a></li>
                     </ul>
                 </li>
 

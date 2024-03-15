@@ -39,7 +39,7 @@ class Client extends Model
         1 => "bg-info",
         2 => "bg-warning",
         3 => "bg-warning",
-        4 => "bg-success",
+        4 => "bg-primary",
         5 => "bg-success",
         6 => "bg-success",
 //        7 => "bg-green-600",

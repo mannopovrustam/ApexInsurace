@@ -27,9 +27,10 @@
             $('#legal-table tbody').on('dblclick', 'tr', function() {
                 updateSelected($(this).data('id'), $(this).data('name'), $(this).data('judge_id'));
             });
+ 
         });
 
-        function updateSelected(id, name, judge_id) {
+        function updateSelected(id, name, judge_id, type) {
             var content = '', url = '', data = [];
             content =
                 '<div class="form-group"><input type="hidden" id="id" class="form-control" value="'+id+'"></div>' +
@@ -65,7 +66,7 @@
                             $.ajax({
                                 url: '/dic/judges-update',
                                 type: 'POST',
-                                data: {data_id: id, judge_id: judge, type: 'legal_judge', _token: '{{ csrf_token() }}'},
+                                data: {data_id: id, judge_id: judge, type: +'legal_judge', _token: '{{ csrf_token() }}'},
                                 success: function (data) {
                                     if (data.success) {
                                         $.alert({

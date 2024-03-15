@@ -22,6 +22,7 @@ class User extends Authenticatable
         'name',
         'email',
         'phone',
+        'region_id',
         'password',
     ];
 
@@ -53,7 +54,7 @@ class User extends Authenticatable
             'action' => $action,
             'user_id' => auth()->id(),
             'ip_address' => request()->ip(),
-            'event' => $event,
+            'data' => $event,
         ]);
     }
 

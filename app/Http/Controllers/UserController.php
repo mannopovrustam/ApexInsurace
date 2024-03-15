@@ -23,7 +23,7 @@ class UserController extends Controller
     {
         $user = auth()->user();
         if ($user->hasRole('Admin')){
-            $data = User::orderBy('id','DESC')->paginate(10);
+            $data = User::orderBy('id','DESC')->paginate(50);
             return view('users.index',compact('data'))
                 ->with('i', ($request->input('page', 1) - 1) * 5);
         }else{
@@ -106,8 +106,7 @@ class UserController extends Controller
         $this->validate($request, [
             'name' => 'required',
             'email' => 'required|email|unique:users,email,'.$id,
-            'password' => 'same:confirm-password',
-            'roles' => 'required'
+            'password' => 'same:confirm-password'
         ]);
 
         $input = $request->all();
@@ -118,6 +117,13 @@ class UserController extends Controller
         }
 
         $user = User::find($id);
+	\DB::table('user_regions')->where('user_id', $id)->delete();
+	foreach($request->region_id as $reg){
+		\DB::table('user_regions')->insert(['user_id'=>$id, 'region_id'=>$reg]);
+	}
+
+        $input['region_id'] = implode(',', $request->region_id);
+
         $user->update($input);
         DB::table('model_has_roles')->where('model_id',$id)->delete();
 

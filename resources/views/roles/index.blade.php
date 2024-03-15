@@ -42,7 +42,6 @@
                     @endforeach
                 </table>
 
-                {!! $roles->render() !!}
 
             </div>
         </div>

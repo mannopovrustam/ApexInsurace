@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Models\Contract\ContractFile;
 use App\Models\User;
 use App\Services\FakturaService;
+use Carbon\Carbon;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -41,21 +42,25 @@ class sendEmail implements ShouldQueue
 
         $forQr = '';
         $forQr .= 'Talabnoma ID: '.$this->contract->id.';';
-        $forQr .= ' FISh '.$this->contract->fullname.';';
+        $forQr .= ' FISh '.$this->cyrillicToLatin($this->contract->fullname).';';
         $forQr .= ' Summa '.$this->contract->amount;
+	$forQr = htmlentities($forQr, ENT_COMPAT, 'utf-8');
+	\Log::info(json_encode($forQr));
 
         $qrName = md5('qrcode_'.$this->contract->id.'_'.time()).'.png';
         $imagePath = public_path('petition/qrcode/'.$qrName);
         $qr = QrCode::format('png')->size(300)->generate($forQr, $imagePath);
 
+
         $filePath = public_path('/petition/template/Talabnoma.docx');
         $templateProcessor = new TemplateProcessor($filePath);
         $templateProcessor->setValue('id', $this->contract->id);
+        $templateProcessor->setValue('bank', $this->contract->cat);
         $templateProcessor->setValue('curdate', now()->translatedFormat('d.m.Y'));
         $templateProcessor->setValue('fullname', $this->contract->fullname);
         $templateProcessor->setValue('address', $this->contract->address);
         $templateProcessor->setValue('phone', $this->contract->phone);
-        $templateProcessor->setValue('date_payment', $this->contract->amount);
+        $templateProcessor->setValue('date_payment', Carbon::parse($this->contract->date_payment)->format('d.m.Y'));
         $templateProcessor->setValue('amount', $this->contract->amount);
         $templateProcessor->setValue('phone', $this->contract->phone);
         $templateProcessor->setValue('phone_user', $this->user->phone);
@@ -91,6 +96,7 @@ class sendEmail implements ShouldQueue
             "SenderAddress" => "100099, ГОРОД ТАШКЕНТ, ЮНУСАБАДСКИЙ РАЙОН, УЛИЦА А.ТЕМУРА-О.ЗОКИРОВА , 5/1",
             "Base64Content" => $base64Pdf
         ];
+	\Log::info(json_encode($postData));
 
         if (env('IS_IDE',0) == 1) (new FakturaService())->getSendRequest($url, 'POST', $postData, $this->contract->id);
 
@@ -99,4 +105,23 @@ class sendEmail implements ShouldQueue
 //        unlink($imagePath);
 
     }
+
+    function cyrillicToLatin($text) {
+        $cyrillic = array(
+            'а', 'б', 'в', 'г', 'д', 'е', 'ё', 'ж', 'з', 'и', 'й', 'к', 'л', 'м', 'ў', 'ғ', 'қ', 'ҳ',
+            'н', 'о', 'п', 'р', 'с', 'т', 'у', 'ф', 'х', 'ц', 'ч', 'ш', 'ъ', 'ь', 'э', 'ю', 'я',
+            'А', 'Б', 'В', 'Г', 'Д', 'Е', 'Ё', 'Ж', 'З', 'И', 'Й', 'К', 'Л', 'М', 'Ў', 'Ғ', 'Қ', 'Ҳ',
+            'Н', 'О', 'П', 'Р', 'С', 'Т', 'У', 'Ф', 'Х', 'Ц', 'Ч', 'Ш', 'Ъ', 'Ь', 'Э', 'Ю', 'Я'
+        );
+
+        $latin = array(
+            'a', 'b', 'v', 'g', 'd', 'e', 'yo', 'j', 'z', 'i', 'y', 'k', 'l', 'm', 'o‘', 'g‘', 'q', 'h',
+            'n', 'o', 'p', 'r', 's', 't', 'u', 'f', 'x', 'ts', 'ch', 'sh', '\'', '', 'e', 'yu', 'ya',
+            'A', 'B', 'V', 'G', 'D', 'E', 'Yo', 'J', 'Z', 'I', 'Y', 'K', 'L', 'M', 'O‘', 'G‘', 'Q', 'H',
+            'N', 'O', 'P', 'R', 'S', 'T', 'U', 'F', 'X', 'Ts', 'Ch', 'Sh', '\'', '', 'E', 'Yu', 'Ya'
+        );
+
+        return str_replace($cyrillic, $latin, $text);
+    }
+
 }

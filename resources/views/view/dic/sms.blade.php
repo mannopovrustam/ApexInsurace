@@ -178,6 +178,10 @@
                                                 <th>Ҳисоб рақам</th>
                                                 <td>$account_number</td>
                                             </tr>
+                                            <tr>
+                                                <th>Банк номи</th>
+                                                <td>$bank_name</td>
+                                            </tr>
                                         </table>
                                     </div>
                                 </div>
