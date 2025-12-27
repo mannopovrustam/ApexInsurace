@@ -35,11 +35,6 @@ class FakturaService
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_CUSTOMREQUEST => 'POST',
             CURLOPT_POSTFIELDS => http_build_query([
-                'grant_type' => 'password',
-                'username' => '998909032444',
-                'password' => '9032444jk',
-                'client_id' => 'apexsystem',
-                'client_secret' => 'uoxFqWzn5B3bi4LtqMu1iNdcGHB2c95spMPSZcVDmzchNMciiNT0qpXODbIc',
             ]),
         ));
 
