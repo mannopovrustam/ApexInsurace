@@ -13,8 +13,6 @@ class SMSService
     {
 
         $url = 'http://online.aic.uz/apex/ins/sms-push/send-re'; // Replace with your authentication endpoint URL
-        $username = 'SMS_RE'; // Replace with the provided login username
-        $password = 'smsre!2023@'; // Replace with the provided login password
 
         $credentials = $username . ':' . $password;
         $authToken = base64_encode($credentials);
