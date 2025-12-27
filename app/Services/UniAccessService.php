@@ -13,7 +13,6 @@ class UniAccessService
         $this->headers = array(
             'Content-Type: application/json',
             'Accept: application/json',
-            'Authorization: Bearer bL2n95eCPf5vPIewQTiT3omh2cbVK3e2faCFWnuLhww63J3jyzrtfN2ya5oJ8OML'
         );
     }
 
